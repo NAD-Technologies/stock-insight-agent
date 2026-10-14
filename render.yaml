@@ -5,5 +5,7 @@
     plan: free
     dockerfilePath: ./Dockerfile
     envVars:
-      - key: ANTHROPIC_API_KEY
+      - key: LLM_PROVIDER
+        value: nvidia
+      - key: NVIDIA_API_KEY
         sync: false
