@@ -1,0 +1,118 @@
+{
+ "ticker": "NVDA",
+ "asOf": "2026-10-14T02:34:22.091699+00:00",
+ "price": 228.52,
+ "rating": "Buy",
+ "compositeScore": 68.1,
+ "confidence": {
+  "level": "High",
+  "reasons": [
+   "data complete and pillars agree"
+  ]
+ },
+ "pillarScores": {
+  "technical": 73.9,
+  "fundamental": 63.3,
+  "analyst": 75.5,
+  "sentiment": 66.2,
+  "risk": 51.9
+ },
+ "horizons": {
+  "short": {
+   "score": 68.7,
+   "rating": "Buy"
+  },
+  "medium": {
+   "score": 68.8,
+   "rating": "Buy"
+  },
+  "long": {
+   "score": 65.1,
+   "rating": "Buy"
+  }
+ },
+ "tradePlan": {
+  "entryZone": [
+   228.49,
+   228.52
+  ],
+  "entry": 228.5,
+  "stopLoss": 225.69,
+  "t1": 235.65,
+  "t2": 243.37,
+  "riskReward": 2.54,
+  "rewardRiskT2": 5.29
+ },
+ "drivers": {
+  "positive": [
+   {
+    "pillar": "analyst",
+    "metric": "Price-target upside %",
+    "value": 43.85,
+    "score": 100.0,
+    "impact": 150.0,
+    "detail": ""
+   },
+   {
+    "pillar": "analyst",
+    "metric": "Consensus (1=Strong Buy..5=Strong Sell)",
+    "value": 1.9,
+    "score": 83.9,
+    "impact": 101.7,
+    "detail": ""
+   },
+   {
+    "pillar": "technical",
+    "metric": "Moving-average rating",
+    "value": "Strong Buy",
+    "score": 89.1,
+    "impact": 78.2,
+    "detail": ""
+   }
+  ],
+  "negative": [
+   {
+    "pillar": "fundamental",
+    "metric": "Margin of safety %",
+    "value": -458.7,
+    "score": 0.0,
+    "impact": -100.0,
+    "detail": "DCF/Graham fair value vs price"
+   },
+   {
+    "pillar": "risk",
+    "metric": "Beta",
+    "value": 2.22,
+    "score": 0.0,
+    "impact": -50.0,
+    "detail": ""
+   },
+   {
+    "pillar": "analyst",
+    "metric": "EPS estimate revisions (net up)",
+    "value": -2,
+    "score": 25.0,
+    "impact": -37.5,
+    "detail": ""
+   }
+  ]
+ },
+ "narrative": {
+  "summary": "NVIDIA Corporation (NVDA) scores 68.1/100 on the balanced profile, rated Buy with high confidence. Pillar scores: technical 74, fundamental 63, analyst 76, sentiment 66, risk 52.",
+  "bullCase": [
+   "Price-target upside %: 43.85 (analyst)",
+   "Consensus (1=Strong Buy..5=Strong Sell): 1.9 (analyst)",
+   "Moving-average rating: Strong Buy (technical)"
+  ],
+  "bearCase": [
+   "Margin of safety %: -458.7 (fundamental)",
+   "Beta: 2.22 (risk)",
+   "EPS estimate revisions (net up): -2 (analyst)"
+  ],
+  "keyRisks": [
+   "1Y max drawdown -20.22% and annualized volatility 37.41%."
+  ],
+  "source": "template"
+ },
+ "failedTools": []
+}

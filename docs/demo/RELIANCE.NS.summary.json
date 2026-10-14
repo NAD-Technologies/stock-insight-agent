@@ -1,0 +1,122 @@
+{
+ "ticker": "RELIANCE.NS",
+ "asOf": "2026-10-14T02:34:34.213659+00:00",
+ "price": 1166.7,
+ "rating": "Sell",
+ "compositeScore": 40.8,
+ "confidence": {
+  "level": "Low",
+  "reasons": [
+   "pillars disagree (spread 56 pts)",
+   "event within 14 days: Earnings"
+  ]
+ },
+ "pillarScores": {
+  "technical": 22.6,
+  "fundamental": 51.5,
+  "analyst": 69.0,
+  "sentiment": 13.5,
+  "risk": 34.7
+ },
+ "horizons": {
+  "short": {
+   "score": 22.1,
+   "rating": "Strong Sell"
+  },
+  "medium": {
+   "score": 44.0,
+   "rating": "Sell"
+  },
+  "long": {
+   "score": 49.6,
+   "rating": "Hold"
+  }
+ },
+ "tradePlan": {
+  "entryZone": [
+   1165.87,
+   1166.7
+  ],
+  "entry": 1166.28,
+  "stopLoss": 1154.62,
+  "t1": 1251.5,
+  "t2": 1284.14,
+  "riskReward": 7.31,
+  "rewardRiskT2": 10.11
+ },
+ "drivers": {
+  "positive": [
+   {
+    "pillar": "analyst",
+    "metric": "Price-target upside %",
+    "value": 42.86,
+    "score": 100.0,
+    "impact": 150.0,
+    "detail": ""
+   },
+   {
+    "pillar": "analyst",
+    "metric": "Consensus (1=Strong Buy..5=Strong Sell)",
+    "value": 1.92,
+    "score": 83.2,
+    "impact": 99.6,
+    "detail": ""
+   },
+   {
+    "pillar": "risk",
+    "metric": "Beta",
+    "value": 0.19,
+    "score": 100.0,
+    "impact": 50.0,
+    "detail": ""
+   }
+  ],
+  "negative": [
+   {
+    "pillar": "technical",
+    "metric": "Moving-average rating",
+    "value": "Strong Sell",
+    "score": 0.0,
+    "impact": -100.0,
+    "detail": ""
+   },
+   {
+    "pillar": "technical",
+    "metric": "Signal consensus (buy-sell)",
+    "value": "2 buy / 10 sell / 3 neutral",
+    "score": 16.7,
+    "impact": -99.9,
+    "detail": ""
+   },
+   {
+    "pillar": "risk",
+    "metric": "Sharpe 1Y",
+    "value": -0.91,
+    "score": 0.0,
+    "impact": -75.0,
+    "detail": ""
+   }
+  ]
+ },
+ "narrative": {
+  "summary": "Reliance Industries Limited (RELIANCE.NS) scores 40.8/100 on the balanced profile, rated Sell with low confidence. Pillar scores: technical 23, fundamental 52, analyst 69, sentiment 14, risk 35.",
+  "bullCase": [
+   "Price-target upside %: 42.86 (analyst)",
+   "Consensus (1=Strong Buy..5=Strong Sell): 1.92 (analyst)",
+   "Beta: 0.19 (risk)"
+  ],
+  "bearCase": [
+   "Moving-average rating: Strong Sell (technical)",
+   "Signal consensus (buy-sell): 2 buy / 10 sell / 3 neutral (technical)",
+   "Sharpe 1Y: -0.91 (risk)"
+  ],
+  "keyRisks": [
+   "Confidence reduced: pillars disagree (spread 56 pts)",
+   "Confidence reduced: event within 14 days: Earnings",
+   "Earnings in 3 days (2026-10-16).",
+   "1Y max drawdown -27.22% and annualized volatility 21.15%."
+  ],
+  "source": "template"
+ },
+ "failedTools": []
+}

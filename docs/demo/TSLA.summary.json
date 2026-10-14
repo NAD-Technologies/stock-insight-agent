@@ -1,0 +1,120 @@
+{
+ "ticker": "TSLA",
+ "asOf": "2026-10-14T02:34:28.293502+00:00",
+ "price": 375.23,
+ "rating": "Hold",
+ "compositeScore": 45.3,
+ "confidence": {
+  "level": "Medium",
+  "reasons": [
+   "event within 14 days: Earnings"
+  ]
+ },
+ "pillarScores": {
+  "technical": 62.1,
+  "fundamental": 38.3,
+  "analyst": 34.5,
+  "sentiment": 59.2,
+  "risk": 23.6
+ },
+ "horizons": {
+  "short": {
+   "score": 55.6,
+   "rating": "Hold"
+  },
+  "medium": {
+   "score": 43.7,
+   "rating": "Sell"
+  },
+  "long": {
+   "score": 37.7,
+   "rating": "Sell"
+  }
+ },
+ "tradePlan": {
+  "entryZone": [
+   370.55,
+   375.23
+  ],
+  "entry": 372.89,
+  "stopLoss": 360.85,
+  "t1": 394.98,
+  "t2": 417.07,
+  "riskReward": 1.83,
+  "rewardRiskT2": 3.67
+ },
+ "drivers": {
+  "positive": [
+   {
+    "pillar": "technical",
+    "metric": "Signal consensus (buy-sell)",
+    "value": "7 buy / 2 sell / 6 neutral",
+    "score": 70.8,
+    "impact": 62.4,
+    "detail": ""
+   },
+   {
+    "pillar": "sentiment",
+    "metric": "Short interest % float",
+    "value": 2.01,
+    "score": 99.9,
+    "impact": 49.9,
+    "detail": ""
+   },
+   {
+    "pillar": "technical",
+    "metric": "RSI(14)",
+    "value": 54.51,
+    "score": 98.9243340720679,
+    "impact": 48.9,
+    "detail": ""
+   }
+  ],
+  "negative": [
+   {
+    "pillar": "fundamental",
+    "metric": "Margin of safety %",
+    "value": -966.6,
+    "score": 0.0,
+    "impact": -100.0,
+    "detail": "DCF/Graham fair value vs price"
+   },
+   {
+    "pillar": "analyst",
+    "metric": "EPS estimate revisions (net up)",
+    "value": -6,
+    "score": 0.0,
+    "impact": -75.0,
+    "detail": ""
+   },
+   {
+    "pillar": "risk",
+    "metric": "Sharpe 1Y",
+    "value": -0.29,
+    "score": 8.4,
+    "impact": -62.4,
+    "detail": ""
+   }
+  ]
+ },
+ "narrative": {
+  "summary": "Tesla, Inc. (TSLA) scores 45.3/100 on the balanced profile, rated Hold with medium confidence. Pillar scores: technical 62, fundamental 38, analyst 34, sentiment 59, risk 24.",
+  "bullCase": [
+   "Signal consensus (buy-sell): 7 buy / 2 sell / 6 neutral (technical)",
+   "Short interest % float: 2.01 (sentiment)",
+   "RSI(14): 54.51 (technical)"
+  ],
+  "bearCase": [
+   "Margin of safety %: -966.6 (fundamental)",
+   "EPS estimate revisions (net up): -6 (analyst)",
+   "Sharpe 1Y: -0.29 (risk)"
+  ],
+  "keyRisks": [
+   "Confidence reduced: event within 14 days: Earnings",
+   "Earnings in 8 days (2026-10-21).",
+   "1Y max drawdown -39.1% and annualized volatility 45.05%."
+  ],
+  "source": "template"
+ },
+ "failedTools": []
+}

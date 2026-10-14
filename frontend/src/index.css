@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { --bg: #f4f5f7; --card: #ffffff; --line: #e2e5ea; --fg: #0f172a; --mute: #64748b; }
+.dark { --bg: #0b0f17; --card: #131a26; --line: #232d3f; --fg: #e5e9f0; --mute: #8b97ab; }
+body { @apply bg-bg text-fg font-sans antialiased; margin: 0; }
+.num { font-variant-numeric: tabular-nums; }
+@keyframes pulse2 { 50% { opacity: .45; } }
+.skeleton { background: var(--line); border-radius: 8px; animation: pulse2 1.4s ease-in-out infinite; }

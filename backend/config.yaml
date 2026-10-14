@@ -1,0 +1,34 @@
+# Scoring configuration. Weights per profile must cover the five pillars.
+profiles:
+  balanced:   {technical: 0.30, fundamental: 0.30, analyst: 0.20, sentiment: 0.10, risk: 0.10}
+  trader:     {technical: 0.50, fundamental: 0.10, analyst: 0.10, sentiment: 0.20, risk: 0.10}
+  investor:   {technical: 0.15, fundamental: 0.45, analyst: 0.20, sentiment: 0.05, risk: 0.15}
+
+# Lower bound (inclusive) of each rating band on the 0-100 composite.
+rating_bands:
+  Strong Buy: 80
+  Buy: 65
+  Hold: 45
+  Sell: 30
+  Strong Sell: 0
+
+# Horizon views re-weight the same pillar scores.
+horizons:
+  short:  {technical: 0.60, sentiment: 0.25, risk: 0.15}              # 1-4 weeks
+  medium: {technical: 0.25, fundamental: 0.25, analyst: 0.30, sentiment: 0.10, risk: 0.10}  # 3-6 months
+  long:   {fundamental: 0.55, analyst: 0.20, risk: 0.15, technical: 0.10}                   # 1y+
+
+dcf:
+  wacc: 0.09
+  terminal_growth: 0.025
+
+cache_ttl_seconds:
+  quote: 60
+  history: 300
+  fundamentals: 86400
+  news: 900
+  other: 900
+
+llm:
+  model: claude-sonnet-5-5
+  max_news_items: 18

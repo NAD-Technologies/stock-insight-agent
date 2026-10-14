@@ -1,0 +1,118 @@
+{
+ "ticker": "AAPL",
+ "asOf": "2026-10-14T02:34:16.078974+00:00",
+ "price": 341.27,
+ "rating": "Hold",
+ "compositeScore": 63.1,
+ "confidence": {
+  "level": "High",
+  "reasons": [
+   "data complete and pillars agree"
+  ]
+ },
+ "pillarScores": {
+  "technical": 78.4,
+  "fundamental": 53.5,
+  "analyst": 52.3,
+  "sentiment": 60.4,
+  "risk": 70.3
+ },
+ "horizons": {
+  "short": {
+   "score": 72.7,
+   "rating": "Buy"
+  },
+  "medium": {
+   "score": 61.7,
+   "rating": "Hold"
+  },
+  "long": {
+   "score": 58.3,
+   "rating": "Hold"
+  }
+ },
+ "tradePlan": {
+  "entryZone": [
+   340.4,
+   341.27
+  ],
+  "entry": 340.83,
+  "stopLoss": 337.03,
+  "t1": 354.32,
+  "t2": 367.81,
+  "riskReward": 3.55,
+  "rewardRiskT2": 7.1
+ },
+ "drivers": {
+  "positive": [
+   {
+    "pillar": "technical",
+    "metric": "Moving-average rating",
+    "value": "Strong Buy",
+    "score": 100.0,
+    "impact": 100.0,
+    "detail": ""
+   },
+   {
+    "pillar": "technical",
+    "metric": "Signal consensus (buy-sell)",
+    "value": "8 buy / 2 sell / 5 neutral",
+    "score": 75.0,
+    "impact": 75.0,
+    "detail": ""
+   },
+   {
+    "pillar": "analyst",
+    "metric": "Earnings beat rate",
+    "value": 1.0,
+    "score": 100.0,
+    "impact": 75.0,
+    "detail": ""
+   }
+  ],
+  "negative": [
+   {
+    "pillar": "analyst",
+    "metric": "Price-target upside %",
+    "value": -3.49,
+    "score": 16.3,
+    "impact": -101.1,
+    "detail": ""
+   },
+   {
+    "pillar": "fundamental",
+    "metric": "Margin of safety %",
+    "value": -153.9,
+    "score": 0.0,
+    "impact": -100.0,
+    "detail": "DCF/Graham fair value vs price"
+   },
+   {
+    "pillar": "fundamental",
+    "metric": "Forward P/E",
+    "value": 35.58,
+    "score": 20,
+    "impact": -45.0,
+    "detail": ""
+   }
+  ]
+ },
+ "narrative": {
+  "summary": "Apple Inc. (AAPL) scores 63.1/100 on the balanced profile, rated Hold with high confidence. Pillar scores: technical 78, fundamental 54, analyst 52, sentiment 60, risk 70.",
+  "bullCase": [
+   "Moving-average rating: Strong Buy (technical)",
+   "Signal consensus (buy-sell): 8 buy / 2 sell / 5 neutral (technical)",
+   "Earnings beat rate: 1.0 (analyst)"
+  ],
+  "bearCase": [
+   "Price-target upside %: -3.49 (analyst)",
+   "Margin of safety %: -153.9 (fundamental)",
+   "Forward P/E: 35.58 (fundamental)"
+  ],
+  "keyRisks": [
+   "1Y max drawdown -13.82% and annualized volatility 24.41%."
+  ],
+  "source": "template"
+ },
+ "failedTools": []
+}

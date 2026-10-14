@@ -1,0 +1,249 @@
+<title>Stock Insight Architecture</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: single readable column; diagrams and tables scroll inside their own boxes. */
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --fg: #151a23; --mute: #5b6472; --line: #dfe3ea; --accent: #0b6e8a;
+  --real: #146c43; --real-bg: #dff3e7; --static: #8a5a00; --static-bg: #fbeccb;
+  --mock: #8f2d56; --mock-bg: #f8dfe9; --llm: #4b3fa8; --llm-bg: #e6e3f8; --code-bg: #eef1f5;
+  --sans: "IBM Plex Sans", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f141b; --panel: #161d27; --fg: #e4e8ee; --mute: #98a3b3; --line: #273142; --accent: #4cc0dc;
+  --real: #6fd19a; --real-bg: #153325; --static: #f0c261; --static-bg: #3a2c0c;
+  --mock: #f09bbd; --mock-bg: #3d1a2b; --llm: #b3a9f5; --llm-bg: #272250; --code-bg: #1d2633; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0f141b; --panel: #161d27; --fg: #e4e8ee; --mute: #98a3b3; --line: #273142; --accent: #4cc0dc;
+  --real: #6fd19a; --real-bg: #153325; --static: #f0c261; --static-bg: #3a2c0c;
+  --mock: #f09bbd; --mock-bg: #3d1a2b; --llm: #b3a9f5; --llm-bg: #272250; --code-bg: #1d2633; color-scheme: dark; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.6 var(--sans); padding-inline: 16px; padding-block: 24px 64px; }
+main { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; }
+h1 { font-size: 1.9rem; line-height: 1.2; margin: 0 0 8px; text-wrap: balance; }
+h2 { font-size: 1.3rem; margin: 0 0 4px; text-wrap: balance; }
+h3 { font-size: 1rem; margin: 0 0 6px; }
+p { margin: 0 0 10px; max-width: 68ch; } .lede { color: var(--mute); font-size: 1.02rem; }
+section { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.box { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px; min-width: 0; }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 0.88rem; }
+th { text-align: left; color: var(--mute); font-weight: 500; font-size: 0.75rem; letter-spacing: .06em; text-transform: uppercase; }
+th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td:first-child { white-space: nowrap; }
+code { font: 0.84em var(--mono); background: var(--code-bg); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+.tag { display: inline-block; font: 500 0.72rem var(--mono); padding: 1px 7px; border-radius: 99px; margin-right: 4px; }
+.t-real { color: var(--real); background: var(--real-bg); } .t-static { color: var(--static); background: var(--static-bg); }
+.t-mock { color: var(--mock); background: var(--mock-bg); } .t-llm { color: var(--llm); background: var(--llm-bg); }
+.legend { display: flex; gap: 8px 16px; flex-wrap: wrap; font-size: 0.85rem; color: var(--mute); }
+pre.mermaid { margin: 0; text-align: center; min-width: 520px; }
+ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.warn { border-left: 3px solid var(--static); }
+</style>
+
+<main>
+<header>
+  <h1>Stock Insight Agent: how it works</h1>
+  <p class="lede">One page for the code flow, the data flow, what is real and what is not, and where to edit when something needs to change.</p>
+  <div class="legend">
+    <span><span class="tag t-real">REAL</span>fetched live from a provider</span>
+    <span><span class="tag t-static">STATIC</span>hard-coded assumption in our code</span>
+    <span><span class="tag t-mock">MOCK</span>synthetic, tests only</span>
+    <span><span class="tag t-llm">LLM</span>written by a language model</span>
+  </div>
+</header>
+
+<section>
+  <h2>1. The short version</h2>
+  <div class="grid">
+    <div class="box"><h3>The "agent" is a fixed pipeline</h3><p>A Python function (<code>agent/orchestrator.py</code>) calls the data tools in a set order, with independent ones running at the same time. No model decides which tool to call.</p></div>
+    <div class="box"><h3>Scores never come from the LLM</h3><p>Rating, scores, confidence, trade plan and drivers are plain arithmetic in <code>analytics/scoring.py</code>. Same data in, same answer out.</p></div>
+    <div class="box"><h3>The LLM is used twice per analysis</h3><p>Once to label news headlines, once to write the summary and bull/bear text. Both are optional and fall back to templates and keywords.</p></div>
+  </div>
+</section>
+
+<section>
+  <h2>2. System map</h2>
+  <p>Everything inside the dashed box runs on one server. Your phone or laptop only talks to the UI and <code>/api</code>.</p>
+  <div class="box scroll"><pre class="mermaid">
+flowchart LR
+  U["Browser / phone"] --> FE["React UI<br/>frontend/src"]
+  FE -->|"GET /api/analyze/AAPL"| API["FastAPI<br/>backend/api/routes.py"]
+  subgraph SRV["One server"]
+    API --> ORC["Orchestrator (the agent)<br/>agent/orchestrator.py"]
+    ORC --> DP["Data providers<br/>data_providers/"]
+    ORC --> AN["Analytics (pure math)<br/>technical, fundamental,<br/>risk, scoring"]
+    ORC --> NW["News + narrative<br/>agent/news.py, narrative.py"]
+    DP --> CA[("In-memory cache")]
+  end
+  DP --> YF["Yahoo Finance<br/>via yfinance"]
+  DP -.->|"only if key set"| EX["Finnhub / Alpha Vantage / FRED"]
+  NW -.->|"only if key set"| LLM["NVIDIA Nemotron or Claude"]
+  </pre></div>
+</section>
+
+<section>
+  <h2>3. What happens when you open a ticker</h2>
+  <div class="box scroll"><pre class="mermaid">
+sequenceDiagram
+  participant UI as React UI
+  participant API as FastAPI
+  participant AG as Orchestrator
+  participant Y as Yahoo / extras
+  participant M as Analytics
+  participant L as LLM (optional)
+  UI->>API: GET /api/analyze/STX?profile=balanced
+  API->>AG: analyze("STX")
+  AG->>Y: 1. get_quote (404 if unknown ticker)
+  AG->>Y: 2. history 5y daily + 5m intraday (parallel)
+  AG->>M: 3. compute_technicals
+  par step 4 to 9, parallel
+    AG->>Y: fundamentals
+    AG->>Y: analyst view
+    AG->>Y: ownership, short, options
+    AG->>Y: news (+ Finnhub, Alpha Vantage)
+    AG->>Y: SPY, sector ETF, VIX, 10Y yield
+    AG->>Y: events (earnings, dividend)
+  end
+  AG->>L: classify headlines
+  L-->>AG: sentiment, impact, catalyst per headline
+  AG->>M: 10. score 5 pillars, composite, plan
+  AG->>L: 11. write summary, bull, bear, risks
+  L-->>AG: narrative (checked against the data)
+  AG-->>API: one JSON document
+  API-->>UI: render dashboard
+  </pre></div>
+  <p>Each step is timed and recorded in <code>agentTrace</code> in the response. If a step fails, its section shows "Data unavailable", the rest still renders, and confidence drops.</p>
+</section>
+
+<section>
+  <h2>4. Steps, sources and whether the data is real</h2>
+  <div class="box scroll"><table>
+    <thead><tr><th>Step</th><th>Data</th><th>Source</th><th>Kind</th><th>Code</th></tr></thead>
+    <tbody>
+      <tr><td>1 Quote</td><td>Price, change, volume, market cap, 52w range, beta, sector, summary</td><td>Yahoo Finance (yfinance)</td><td><span class="tag t-real">REAL</span></td><td><code>yahoo.get_quote</code></td></tr>
+      <tr><td>2 History</td><td>5y daily candles, 5 days of 5-minute candles</td><td>Yahoo Finance</td><td><span class="tag t-real">REAL</span></td><td><code>yahoo.get_price_history</code></td></tr>
+      <tr><td>3 Technicals</td><td>SMA/EMA, RSI, MACD, Bollinger, ADX, Ichimoku, levels, signals</td><td>Computed from step 2</td><td><span class="tag t-real">REAL</span> math on real data</td><td><code>analytics/technical.py</code></td></tr>
+      <tr><td>4 Fundamentals</td><td>Statements, ratios, growth, margins, DCF inputs</td><td>Yahoo Finance</td><td><span class="tag t-real">REAL</span></td><td><code>yahoo.get_fundamentals</code>, <code>analytics/fundamental.py</code></td></tr>
+      <tr><td>4 Sector medians</td><td>The "sector median" P/E, P/B, etc. shown in tables and charts</td><td>A table typed into the code</td><td><span class="tag t-static">STATIC</span></td><td><code>fundamental.py SECTOR_MEDIANS</code></td></tr>
+      <tr><td>4 Fair value</td><td>DCF and Graham number</td><td>Real cash flow, assumed WACC 9% and growth 2.5%</td><td><span class="tag t-real">REAL</span> <span class="tag t-static">STATIC</span> assumptions</td><td><code>config.yaml dcf</code></td></tr>
+      <tr><td>5 Analysts</td><td>Rating counts, price targets, upgrades, estimate revisions, earnings surprises</td><td>Yahoo Finance</td><td><span class="tag t-real">REAL</span></td><td><code>yahoo.get_analyst_view</code></td></tr>
+      <tr><td>6 Smart money</td><td>Insider trades, institutions, short interest, put/call, IV</td><td>Yahoo Finance</td><td><span class="tag t-real">REAL</span></td><td><code>yahoo.get_ownership_and_flow</code></td></tr>
+      <tr><td>7 News</td><td>Headlines, source, time, link</td><td>Yahoo (plus Finnhub, Alpha Vantage if keyed)</td><td><span class="tag t-real">REAL</span></td><td><code>orchestrator._gather_news</code></td></tr>
+      <tr><td>7 News labels</td><td>Bullish / Neutral / Bearish, impact, catalyst</td><td>LLM, else a keyword list</td><td><span class="tag t-llm">LLM</span> <span class="tag t-static">STATIC</span> fallback</td><td><code>agent/news.py</code></td></tr>
+      <tr><td>8 Market context</td><td>SPY, sector ETF, VIX, 10Y yield, relative strength</td><td>Yahoo (FRED for 10Y if keyed)</td><td><span class="tag t-real">REAL</span></td><td><code>yahoo.get_market_context</code></td></tr>
+      <tr><td>8 Sector to ETF map</td><td>Which ETF stands for which sector</td><td>A table typed into the code</td><td><span class="tag t-static">STATIC</span></td><td><code>yahoo.py SECTOR_ETF</code></td></tr>
+      <tr><td>9 Events</td><td>Next earnings, ex-dividend</td><td>Yahoo Finance</td><td><span class="tag t-real">REAL</span></td><td><code>yahoo.get_events</code></td></tr>
+      <tr><td>10 Scoring</td><td>Pillar scores, composite, rating, confidence, plan</td><td>Our formulas, weights and thresholds</td><td><span class="tag t-static">STATIC</span> rules on real data</td><td><code>analytics/scoring.py</code>, <code>config.yaml</code></td></tr>
+      <tr><td>11 Narrative</td><td>Summary, bull case, bear case, risks</td><td>LLM, else a template</td><td><span class="tag t-llm">LLM</span></td><td><code>agent/narrative.py</code></td></tr>
+    </tbody></table></div>
+  <div class="box warn">
+    <h3>Mock data</h3>
+    <ul>
+      <li>The app uses no mock data at runtime. If Yahoo fails, you see "N/A" or "Data unavailable", never invented numbers.</li>
+      <li>Synthetic price series exist only in <code>backend/tests/conftest.py</code>, so tests run without internet.</li>
+      <li><code>docs/demo/*.json</code> are saved copies of real responses from 14 Oct 2026, kept as samples. The app does not read them.</li>
+    </ul>
+    <h3 style="margin-top:10px">Caveats on "real"</h3>
+    <ul>
+      <li>yfinance reads Yahoo's unofficial endpoints. Quotes can be delayed about 15 minutes, and Yahoo can rate-limit or change fields without notice.</li>
+      <li>The sector medians are approximate typed-in numbers, not live. Treat the "vs sector" charts as rough.</li>
+      <li>Finnhub news, Alpha Vantage news and FRED's 10Y yield are wired in but switched off until you add their keys. A Finnhub earnings-surprise function exists in <code>enrichment.py</code> but is not used yet.</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h2>5. When the LLM runs</h2>
+  <div class="box scroll"><table>
+    <thead><tr><th>Where</th><th>What it does</th><th>If no key or it fails</th></tr></thead>
+    <tbody>
+      <tr><td>News labels</td><td>One call per analysis. Reads up to 18 headlines and returns sentiment, impact, reason and catalyst for each.</td><td>Keyword lists in <code>agent/news.py</code>. The UI shows "classifier: lexicon".</td></tr>
+      <tr><td>Narrative</td><td>One call per analysis. Gets the finished JSON and writes the summary, bull case, bear case and risks.</td><td>A template built from the top drivers. The UI shows "Template summary".</td></tr>
+      <tr><td>Never</td><td>Scores, rating, confidence, horizons, trade plan, any chart or table number.</td><td>Not applicable.</td></tr>
+    </tbody></table></div>
+  <ul>
+    <li><b>Guard:</b> after the LLM writes the narrative, code checks every number in it against the JSON. If more than 15% of figures are not in the data, the text is thrown away and the template is used.</li>
+    <li><b>Provider:</b> set by <code>LLM_PROVIDER</code> in <code>.env</code>: <code>nvidia</code> (open Nemotron models), <code>openai</code> (any compatible server, such as Ollama) or <code>anthropic</code> (Claude). Code is in <code>agent/llm.py</code>.</li>
+    <li><b>Speed:</b> the 120B Nemotron reasoning model took about 130 seconds for a full analysis. A smaller model through <code>LLM_MODEL</code> will be faster.</li>
+    <li><b>Compare view:</b> it skips the narrative but still sends headlines to the LLM when a key is set. That is a leftover that should be fixed.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>6. How the score is built</h2>
+  <div class="box scroll"><pre class="mermaid">
+flowchart LR
+  A["Raw metrics<br/>RSI, P/E, upside, beta ..."] -->|"scale() to 0-100"| B["Metric scores"]
+  B -->|"weighted average"| C["5 pillar scores<br/>Technical, Fundamental,<br/>Analyst, Sentiment, Risk"]
+  C -->|"profile weights<br/>config.yaml"| D["Composite 0-100"]
+  D --> E["Rating<br/>80 Strong Buy, 65 Buy,<br/>45 Hold, 30 Sell"]
+  C --> F["Confidence<br/>coverage, agreement,<br/>earnings within 14 days"]
+  C -->|"other weights"| G["Short / Medium / Long views"]
+  A --> H["Trade plan<br/>support, ATR, targets"]
+  B --> I["Top 3 drivers<br/>(score - 50) x weight"]
+  </pre></div>
+</section>
+
+<section>
+  <h2>7. Frontend map</h2>
+  <div class="box scroll"><pre class="mermaid">
+flowchart TB
+  App["App.tsx<br/>state: ticker, profile, watchlist, theme"] --> api["api.ts<br/>fetch /api/..."]
+  App --> Top["Top.tsx<br/>Header, Hero, Verdict"]
+  App --> PC["PriceChart.tsx<br/>candles, SMA, RSI, MACD"]
+  App --> PL["Pillars.tsx<br/>5 score cards, tech gauges"]
+  App --> PN["Panels.tsx<br/>Fundamentals, Analyst, News,<br/>SmartMoney, Risk, Narrative"]
+  App --> CM["Compare.tsx"]
+  Top & PC & PL & PN & CM --> UI["ui.tsx<br/>Card, Badge, Gauge, Section"]
+  </pre></div>
+  <p>The UI holds no business logic. It draws what <code>/api/analyze</code> returns. The watchlist, theme, last ticker and profile are saved in the browser's localStorage only.</p>
+</section>
+
+<section>
+  <h2>8. Where to change things</h2>
+  <div class="box scroll"><table>
+    <thead><tr><th>I want to</th><th>Edit</th></tr></thead>
+    <tbody>
+      <tr><td>Change pillar or profile weights, rating cutoffs</td><td><code>backend/config.yaml</code></td></tr>
+      <tr><td>Change how a metric is scored (ranges, weights)</td><td><code>backend/analytics/scoring.py</code>, the <code>score_*</code> functions</td></tr>
+      <tr><td>Add or fix an indicator</td><td><code>backend/analytics/technical.py</code> (and a test in <code>tests/test_technical.py</code>)</td></tr>
+      <tr><td>Change DCF assumptions</td><td><code>config.yaml</code> under <code>dcf</code></td></tr>
+      <tr><td>Update sector medians or sector ETFs</td><td><code>analytics/fundamental.py SECTOR_MEDIANS</code>, <code>data_providers/yahoo.py SECTOR_ETF</code></td></tr>
+      <tr><td>Fetch a new data field or use another provider</td><td><code>backend/data_providers/</code>, then wire it in <code>agent/orchestrator.py</code></td></tr>
+      <tr><td>Change cache times</td><td><code>config.yaml</code> and the <code>@ttl_cache(...)</code> numbers in the code. A whole analysis is also cached for 120 s in <code>orchestrator.analyze</code>.</td></tr>
+      <tr><td>Change the LLM, model or prompts</td><td><code>.env</code>, <code>agent/llm.py</code> (prompts and schemas), <code>agent/narrative.py</code></td></tr>
+      <tr><td>Change news keywords</td><td><code>backend/agent/news.py</code>, <code>BULL</code>, <code>BEAR</code>, <code>CATALYSTS</code></td></tr>
+      <tr><td>Change a screen or chart</td><td>The matching file in <code>frontend/src/components/</code> (map in section 7)</td></tr>
+      <tr><td>Change the default watchlist</td><td><code>frontend/src/App.tsx</code>, <code>watchlist_v2</code></td></tr>
+      <tr><td>Add an API field the UI needs</td><td>Put it in the payload in <code>orchestrator.analyze</code>, then read it in a component</td></tr>
+    </tbody></table></div>
+  <p>Run <code>python -m pytest</code> in <code>backend/</code> after scoring or indicator changes.</p>
+</section>
+
+<section>
+  <h2>9. Run it on your phone for free</h2>
+  <p>The repo now has a single <code>Dockerfile</code> that builds the UI and serves it with the API from one URL, and a <code>render.yaml</code> for Render's free plan.</p>
+  <div class="box">
+    <h3>Deploy on Render (free)</h3>
+    <ul>
+      <li>Push the project to a GitHub repository. <code>.env</code> is already git-ignored, so the key is not uploaded.</li>
+      <li>On render.com choose New, Blueprint, pick the repo. It reads <code>render.yaml</code>.</li>
+      <li>When asked, paste <code>NVIDIA_API_KEY</code> as an environment variable.</li>
+      <li>Open the <code>https://….onrender.com</code> address on your phone.</li>
+    </ul>
+    <p style="margin-top:10px">The free plan sleeps after about 15 minutes idle, so the first load takes 30 to 60 seconds. Memory is limited, which suits this app because the cache is in memory.</p>
+  </div>
+  <div class="box">
+    <h3>Quick look without deploying</h3>
+    <p>With the app running on your computer and the phone on the same Wi-Fi, open <code>http://&lt;your-PC-IP&gt;:5173</code>. For a public link from your own PC, a Cloudflare quick tunnel (<code>cloudflared tunnel --url http://localhost:5173</code>) works while the PC is on.</p>
+  </div>
+  <div class="box warn">
+    <h3>Before you host</h3>
+    <ul>
+      <li>The NVIDIA key was pasted into a chat. Create a new one at build.nvidia.com and revoke the old one.</li>
+      <li>Anyone with the URL can use the API and spend your key's quota. Keep the link private or add a password later.</li>
+      <li>Yahoo sometimes blocks cloud server addresses. If hosted data comes back empty while it works locally, that is the cause.</li>
+    </ul>
+  </div>
+</section>
+</main>
