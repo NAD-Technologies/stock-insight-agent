@@ -45,8 +45,11 @@ def _init() -> None:
             from psycopg.rows import dict_row
             from psycopg_pool import ConnectionPool
             # prepare_threshold=None keeps this compatible with pgbouncer / Supabase pooler connections
-            _pool = ConnectionPool(DATABASE_URL, min_size=1, max_size=4, open=True, timeout=15,
-                                   kwargs={"row_factory": dict_row, "prepare_threshold": None})
+            # Serverless Postgres (Neon) closes idle connections, so validate on checkout (`check`), recycle idle ones
+            # before the server drops them (`max_idle`), and keep no permanent connections (`min_size=0`).
+            _pool = ConnectionPool(DATABASE_URL, min_size=0, max_size=4, open=True, timeout=20,
+                                   check=ConnectionPool.check_connection, max_idle=45, max_lifetime=600,
+                                   kwargs={"row_factory": dict_row, "prepare_threshold": None, "connect_timeout": 15})
             with _pool.connection() as c:
                 for t in _TABLES:
                     c.execute(t.format(pk="BIGSERIAL PRIMARY KEY"))
@@ -73,9 +76,16 @@ def _run(sql: str, args: tuple = (), many: bool = False):
     """Run one statement. SQL is written with ? placeholders (translated for Postgres)."""
     _init()
     if PG:
-        with _pool.connection() as c:  # commits on clean exit
-            cur = c.execute(sql.replace("?", "%s"), args)
-            return [_norm(r) for r in cur.fetchall()] if many else None
+        import psycopg
+        for attempt in (1, 2):
+            try:
+                with _pool.connection() as c:  # commits on clean exit
+                    cur = c.execute(sql.replace("?", "%s"), args)
+                    return [_norm(r) for r in cur.fetchall()] if many else None
+            except psycopg.OperationalError:  # connection dropped under us (idle timeout, restart): retry on a fresh one
+                if attempt == 2:
+                    raise
+                time.sleep(0.3)
     with closing(sqlite3.connect(DB_PATH, timeout=10)) as c:
         c.row_factory = sqlite3.Row
         cur = c.execute(sql, args)

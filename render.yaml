@@ -4,6 +4,7 @@
     runtime: docker
     plan: free
     dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
     envVars:
       - key: LLM_PROVIDER
         value: nvidia
