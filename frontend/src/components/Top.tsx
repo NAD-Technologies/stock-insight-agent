@@ -68,7 +68,7 @@ export function Header({ onSelect, profile, setProfile, onRefresh, asOf, watchli
             ) : (
               <>
                 <span className="text-xs text-mute">Guest</span>
-                <button onClick={onSignOut} className="rounded-lg border border-line px-3 py-2 text-sm">Sign up</button>
+                <button onClick={onSignOut} className="rounded-lg border border-line px-3 py-2 text-sm">Log in</button>
               </>
             )}
           </div>

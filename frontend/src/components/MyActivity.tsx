@@ -10,10 +10,10 @@ export function GuestNotice({ onSignUp }: { onSignUp: () => void }) {
     <div className="rounded-xl border border-line bg-card p-5">
       <h3 className="text-base font-semibold">You're browsing as a guest</h3>
       <p className="mt-1 text-sm text-mute">
-        Guests see generic market information only. Sign up with Google, it's free, to get a personalised view: the tickers you've
+        Guests see generic market information only. Log in with Google, it's free, to get a personalised view: the tickers you've
         explored, your most-viewed stocks, and a watchlist saved to your account.
       </p>
-      <button onClick={onSignUp} className="mt-3 rounded-lg bg-fg px-4 py-2 text-sm font-semibold text-bg">Sign up for a personalised view</button>
+      <button onClick={onSignUp} className="mt-3 rounded-lg bg-fg px-4 py-2 text-sm font-semibold text-bg">Log in for a personalised view</button>
     </div>
   );
 }

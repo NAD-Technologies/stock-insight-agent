@@ -1,7 +1,9 @@
-"""Tiny SQLite store for users, per-user ticker views and feedback.
+"""Small data store for users, per-user ticker views and feedback.
 
-Set DATA_DIR to a persistent location in production. On hosts with an ephemeral disk
-(e.g. Render free tier) the file is wiped on every redeploy/restart.
+Two backends, chosen by environment:
+  * DATABASE_URL set (postgresql://...)  -> Postgres (e.g. free Neon / Supabase); data survives redeploys.
+  * otherwise                           -> a local SQLite file (DATA_DIR/app.db, default backend/data/app.db).
+    On hosts with an ephemeral disk (Render free tier) that file is wiped on every redeploy/restart.
 """
 import json
 import os
@@ -9,50 +11,73 @@ import sqlite3
 import threading
 import time
 from contextlib import closing
+from decimal import Decimal
 from pathlib import Path
+
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+if DATABASE_URL.startswith("postgres://"):  # some providers still hand out the legacy scheme
+    DATABASE_URL = "postgresql://" + DATABASE_URL[len("postgres://"):]
+PG = DATABASE_URL.startswith("postgresql://")
 
 DB_PATH = Path(os.getenv("DATA_DIR") or Path(__file__).resolve().parent.parent / "data") / "app.db"
 _init_lock = threading.Lock()
 _ready = False
+_pool = None
 
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS users (
-  id TEXT PRIMARY KEY, email TEXT, name TEXT, picture TEXT,
-  first_seen INTEGER, last_seen INTEGER, login_count INTEGER DEFAULT 0
-);
-CREATE TABLE IF NOT EXISTS ticker_views (
-  user_id TEXT, ticker TEXT, count INTEGER DEFAULT 0, last_viewed INTEGER,
-  PRIMARY KEY (user_id, ticker)
-);
-CREATE TABLE IF NOT EXISTS activity (
-  user_id TEXT, day TEXT, PRIMARY KEY (user_id, day)
-);
-CREATE TABLE IF NOT EXISTS feedback (
-  id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT, name TEXT, email TEXT,
-  rating INTEGER, message TEXT, created_at INTEGER
-);
-"""
+_TABLES = [
+    "CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT, name TEXT, picture TEXT, "
+    "first_seen BIGINT, last_seen BIGINT, login_count INTEGER DEFAULT 0, prefs TEXT)",
+    "CREATE TABLE IF NOT EXISTS ticker_views (user_id TEXT, ticker TEXT, count INTEGER DEFAULT 0, "
+    "last_viewed BIGINT, PRIMARY KEY (user_id, ticker))",
+    "CREATE TABLE IF NOT EXISTS activity (user_id TEXT, day TEXT, PRIMARY KEY (user_id, day))",
+    "CREATE TABLE IF NOT EXISTS feedback (id {pk}, user_id TEXT, name TEXT, email TEXT, "
+    "rating INTEGER, message TEXT, created_at BIGINT)",
+]
 
 
-def _conn() -> sqlite3.Connection:
-    global _ready
+def _init() -> None:
+    """Create tables once per process (and add columns introduced after the first release)."""
+    global _ready, _pool
     with _init_lock:
-        if not _ready:
+        if _ready:
+            return
+        if PG:
+            from psycopg.rows import dict_row
+            from psycopg_pool import ConnectionPool
+            # prepare_threshold=None keeps this compatible with pgbouncer / Supabase pooler connections
+            _pool = ConnectionPool(DATABASE_URL, min_size=1, max_size=4, open=True, timeout=15,
+                                   kwargs={"row_factory": dict_row, "prepare_threshold": None})
+            with _pool.connection() as c:
+                for t in _TABLES:
+                    c.execute(t.format(pk="BIGSERIAL PRIMARY KEY"))
+                c.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS prefs TEXT")
+        else:
             DB_PATH.parent.mkdir(parents=True, exist_ok=True)
             with closing(sqlite3.connect(DB_PATH)) as c:
-                c.executescript(SCHEMA)
-                try:  # lightweight migration for DBs created before prefs existed
+                for t in _TABLES:
+                    c.execute(t.format(pk="INTEGER PRIMARY KEY AUTOINCREMENT"))
+                try:  # DBs created before prefs existed
                     c.execute("ALTER TABLE users ADD COLUMN prefs TEXT")
                 except sqlite3.OperationalError:
                     pass
-            _ready = True
-    c = sqlite3.connect(DB_PATH, timeout=10)
-    c.row_factory = sqlite3.Row
-    return c
+                c.commit()
+        _ready = True
+
+
+def _norm(row: dict) -> dict:
+    """Postgres returns Decimal for SUM/AVG; make rows JSON-friendly."""
+    return {k: (int(v) if v == v.to_integral_value() else float(v)) if isinstance(v, Decimal) else v for k, v in row.items()}
 
 
 def _run(sql: str, args: tuple = (), many: bool = False):
-    with closing(_conn()) as c:
+    """Run one statement. SQL is written with ? placeholders (translated for Postgres)."""
+    _init()
+    if PG:
+        with _pool.connection() as c:  # commits on clean exit
+            cur = c.execute(sql.replace("?", "%s"), args)
+            return [_norm(r) for r in cur.fetchall()] if many else None
+    with closing(sqlite3.connect(DB_PATH, timeout=10)) as c:
+        c.row_factory = sqlite3.Row
         cur = c.execute(sql, args)
         rows = [dict(r) for r in cur.fetchall()] if many else None
         c.commit()
@@ -73,7 +98,7 @@ def _day(ts: float | None = None) -> str:
 
 
 def _mark_active(uid: str) -> None:
-    _run("INSERT OR IGNORE INTO activity (user_id, day) VALUES (?,?)", (uid, _day()))
+    _run("INSERT INTO activity (user_id, day) VALUES (?,?) ON CONFLICT DO NOTHING", (uid, _day()))
 
 
 def touch_user(uid: str) -> None:

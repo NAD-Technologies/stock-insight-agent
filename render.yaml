@@ -15,3 +15,5 @@
         generateValue: true
       - key: ADMIN_EMAILS
         sync: false
+      - key: DATABASE_URL
+        sync: false

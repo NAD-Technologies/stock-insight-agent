@@ -47,7 +47,7 @@ export default function AuthGate({ onSession }: { onSession: (s: Session) => voi
       <div className="w-full max-w-sm rounded-2xl border border-line bg-card p-8 text-center shadow-lg">
         <div className="flex justify-center"><Logo size={48} tagline /></div>
         <h1 className="mt-5 text-2xl font-bold">Stock Insight</h1>
-        <p className="mt-1 text-sm text-mute">Sign up for a personalised view: your explored tickers, most-viewed stocks and a saved watchlist. Guests get generic market info only.</p>
+        <p className="mt-1 text-sm text-mute">Log in for a personalised view: your explored tickers, most-viewed stocks and a saved watchlist. Guests get generic market info only.</p>
 
         <div className="mt-6 flex flex-col items-center gap-3">
           <div ref={btn} className="min-h-[44px]" />

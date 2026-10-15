@@ -99,9 +99,9 @@ function Dashboard({ session, onSignOut }: { session: Session; onSignOut: () => 
       <main className="mx-auto max-w-7xl space-y-4 px-4 py-4">
         {guest && !hideBanner && view !== "me" && (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-card px-4 py-3 text-sm">
-            <span>👋 You're a guest, so you're seeing <b>generic market info</b>. <b>Sign up</b> for a personalised view of the tickers you explore.</span>
+            <span>👋 You're a guest, so you're seeing <b>generic market info</b>. <b>Log in</b> for a personalised view of the tickers you explore.</span>
             <span className="flex gap-2">
-              <button onClick={onSignOut} className="rounded-lg bg-fg px-3 py-1.5 text-xs font-semibold text-bg">Sign up</button>
+              <button onClick={onSignOut} className="rounded-lg bg-fg px-3 py-1.5 text-xs font-semibold text-bg">Log in</button>
               <button onClick={() => setHideBanner(true)} className="rounded-lg border border-line px-3 py-1.5 text-xs">Dismiss</button>
             </span>
           </div>
