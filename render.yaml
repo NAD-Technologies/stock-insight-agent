@@ -13,3 +13,5 @@
         sync: false
       - key: SESSION_SECRET
         generateValue: true
+      - key: ADMIN_EMAILS
+        sync: false

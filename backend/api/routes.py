@@ -1,9 +1,11 @@
 import asyncio
 import re
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Header, HTTPException, Query
 
 from agent import orchestrator as O
+from api import db
+from api.auth import get_user
 from data_providers import yahoo as Y
 
 router = APIRouter(prefix="/api")
@@ -23,10 +25,17 @@ async def health():
 
 
 @router.get("/analyze/{ticker}")
-async def analyze(ticker: str, profile: str = Query("balanced", pattern="^(balanced|trader|investor)$")):
+async def analyze(ticker: str, profile: str = Query("balanced", pattern="^(balanced|trader|investor)$"), authorization: str = Header("")):
     t = _check(ticker)
     try:
-        return await O.analyze(t, profile)
+        result = await O.analyze(t, profile)
+        user = get_user(authorization)
+        if user:  # personalised activity: count successful lookups for signed-in users
+            try:
+                db.record_view(user["id"], t)
+            except Exception:  # noqa: BLE001  (never fail an analysis because of tracking)
+                pass
+        return result
     except Y.TickerNotFound:
         raise HTTPException(404, f"No market data found for {t}")
     except Exception as e:  # noqa: BLE001

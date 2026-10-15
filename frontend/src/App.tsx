@@ -8,6 +8,9 @@ import { Analyst, Fundamentals, Narrative, News, Risk, SmartMoney } from "./comp
 import Compare from "./components/Compare";
 import { Card, Section, Skeleton } from "./components/ui";
 import AuthGate from "./components/AuthGate";
+import MyActivity, { GuestNotice } from "./components/MyActivity";
+import Admin from "./components/Admin";
+import FeedbackModal from "./components/FeedbackModal";
 import { loadSession, saveSession, validate, Session } from "./auth";
 
 const ls = {
@@ -20,7 +23,11 @@ export default function App() {
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    if (session?.mode === "google") validate(session.token).then((ok) => { if (!ok) { saveSession(null); setSession(null); } setChecked(true); });
+    if (session?.mode === "google") validate(session.token).then((u) => {
+      if (u === null) { saveSession(null); setSession(null); }
+      else if (u) { const next: Session = { mode: "google", token: session.token, user: u }; saveSession(next); setSession(next); }
+      setChecked(true);
+    });
     else setChecked(true);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -41,7 +48,10 @@ function Dashboard({ session, onSignOut }: { session: Session; onSignOut: () => 
   const [profile, setProfile] = useState<string>(ls.get("profile", "balanced"));
   const [watch, setWatch] = useState<string[]>(ls.get(wlKey, ["AAPL", "NVDA", "TSLA", "RELIANCE.NS", "TCS.NS", "INFY.NS"]));
   const [dark, setDark] = useState<boolean>(ls.get("dark", true));
-  const [view, setView] = useState<"analyze" | "compare">("analyze");
+  const [view, setView] = useState<"analyze" | "compare" | "me" | "admin">("analyze");
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [hideBanner, setHideBanner] = useState(false);
+  const guest = session.mode !== "google";
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -65,9 +75,20 @@ function Dashboard({ session, onSignOut }: { session: Session; onSignOut: () => 
   return (
     <div className="min-h-screen pb-16">
       <Header onSelect={(t: string) => { setTicker(t); setView("analyze"); }} profile={profile} setProfile={setProfile} onRefresh={load}
-        asOf={data?.asOf} watchlist={watch} current={ticker} toggleWatch={toggleWatch} dark={dark} toggleDark={() => setDark(!dark)} view={view} setView={setView} session={session} onSignOut={onSignOut} />
+        asOf={data?.asOf} watchlist={watch} current={ticker} toggleWatch={toggleWatch} dark={dark} toggleDark={() => setDark(!dark)} view={view} setView={setView} session={session} onSignOut={onSignOut} onFeedback={() => setFeedbackOpen(true)} />
       <main className="mx-auto max-w-7xl space-y-4 px-4 py-4">
-        {view === "compare" ? <Compare profile={profile} initial={watch} /> : (
+        {guest && !hideBanner && view !== "me" && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-card px-4 py-3 text-sm">
+            <span>👋 You're a guest, so you're seeing <b>generic market info</b>. <b>Sign up</b> for a personalised view of the tickers you explore.</span>
+            <span className="flex gap-2">
+              <button onClick={onSignOut} className="rounded-lg bg-fg px-3 py-1.5 text-xs font-semibold text-bg">Sign up</button>
+              <button onClick={() => setHideBanner(true)} className="rounded-lg border border-line px-3 py-1.5 text-xs">Dismiss</button>
+            </span>
+          </div>
+        )}
+        {view === "me" ? <MyActivity session={session} watchlist={watch} onSignUp={onSignOut} onSelect={(t: string) => { setTicker(t); setView("analyze"); }} />
+          : view === "admin" ? (session.mode === "google" && session.user.isAdmin ? <Admin /> : <GuestNotice onSignUp={onSignOut} />)
+          : view === "compare" ? <Compare profile={profile} initial={watch} /> : (
           <>
             {loading && <><Skeleton h={160} /><Skeleton h={320} /><Skeleton h={420} /></>}
             {!loading && error && (
@@ -93,6 +114,7 @@ function Dashboard({ session, onSignOut }: { session: Session; onSignOut: () => 
           </>
         )}
       </main>
+      {feedbackOpen && <FeedbackModal session={session} onClose={() => setFeedbackOpen(false)} />}
       <footer className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-card/95 px-4 py-2 text-center text-xs text-mute backdrop-blur">
         {data?.disclaimer || "Educational analysis only — not financial advice. Data may be delayed."} · © NAD Technologies
       </footer>

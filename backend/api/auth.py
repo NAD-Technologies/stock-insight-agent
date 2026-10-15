@@ -9,6 +9,8 @@ import httpx
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
 
+from api import db
+
 router = APIRouter(prefix="/api/auth")
 
 SESSION_TTL = 30 * 24 * 3600
@@ -49,6 +51,26 @@ def _verify(token: str) -> dict | None:
         return None
 
 
+def is_admin(email: str | None) -> bool:
+    admins = {e.strip().lower() for e in os.getenv("ADMIN_EMAILS", "").split(",") if e.strip()}
+    return bool(email) and email.lower() in admins
+
+
+def get_user(authorization: str = "") -> dict | None:
+    """Signed-in user from a Bearer session token, or None for guests / bad tokens."""
+    data = _verify(authorization.removeprefix("Bearer ").strip()) if authorization else None
+    return {k: data.get(k) for k in ("id", "email", "name", "picture")} if data else None
+
+
+def require_admin(authorization: str = Header("")) -> dict:
+    u = get_user(authorization)
+    if not u:
+        raise HTTPException(401, "Not signed in")
+    if not is_admin(u.get("email")):
+        raise HTTPException(403, "Admin access required")
+    return u
+
+
 class GoogleLogin(BaseModel):
     credential: str
 
@@ -78,12 +100,14 @@ async def google_login(body: GoogleLogin):
         raise HTTPException(401, "Google email is not verified")
     user = {"id": info["sub"], "email": info.get("email"), "name": info.get("name") or info.get("email"),
             "picture": info.get("picture")}
-    return {"token": _sign({**user, "exp": int(time.time()) + SESSION_TTL}), "user": user}
+    db.upsert_user(user)
+    return {"token": _sign({**user, "exp": int(time.time()) + SESSION_TTL}), "user": {**user, "isAdmin": is_admin(user["email"])}}
 
 
 @router.get("/me")
 async def me(authorization: str = Header("")):
-    data = _verify(authorization.removeprefix("Bearer ").strip())
-    if not data:
+    u = get_user(authorization)
+    if not u:
         raise HTTPException(401, "Not signed in")
-    return {"user": {k: data.get(k) for k in ("id", "email", "name", "picture")}}
+    db.touch_user(u["id"])
+    return {"user": {**u, "isAdmin": is_admin(u.get("email"))}}

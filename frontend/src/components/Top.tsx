@@ -4,7 +4,7 @@ import { search } from "../api";
 import { Badge, Card, Gauge } from "./ui";
 import { ago, big, fmtMetric, num, pct, ratioPct, ratingColor, usd } from "../lib/format";
 
-export function Header({ onSelect, profile, setProfile, onRefresh, asOf, watchlist, current, toggleWatch, dark, toggleDark, view, setView, session, onSignOut }: any) {
+export function Header({ onSelect, profile, setProfile, onRefresh, asOf, watchlist, current, toggleWatch, dark, toggleDark, view, setView, session, onSignOut, onFeedback }: any) {
   const [q, setQ] = useState("");
   const [res, setRes] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
@@ -49,6 +49,11 @@ export function Header({ onSelect, profile, setProfile, onRefresh, asOf, watchli
         <button onClick={() => setView(view === "compare" ? "analyze" : "compare")} className="rounded-lg border border-line px-3 py-2 text-sm">
           {view === "compare" ? "Analyze" : "Compare"}
         </button>
+        <button onClick={() => setView(view === "me" ? "analyze" : "me")} className={`rounded-lg border px-3 py-2 text-sm ${view === "me" ? "border-fg" : "border-line"}`}>My view</button>
+        {session?.mode === "google" && session.user.isAdmin && (
+          <button onClick={() => setView(view === "admin" ? "analyze" : "admin")} className={`rounded-lg border px-3 py-2 text-sm ${view === "admin" ? "border-fg" : "border-line"}`}>Admin</button>
+        )}
+        <button onClick={onFeedback} className="rounded-lg border border-line px-3 py-2 text-sm">Feedback</button>
         <button onClick={onRefresh} className="rounded-lg border border-line px-3 py-2 text-sm">↻ Refresh</button>
         <button onClick={toggleDark} className="rounded-lg border border-line px-3 py-2 text-sm">{dark ? "☀" : "🌙"}</button>
         {asOf && <span className="text-xs text-mute">Updated {ago(asOf)}</span>}
