@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { analyze } from "./api";
+import { analyze, getPrefs, putPrefs } from "./api";
 import { setCurrency } from "./lib/format";
 import { Header, Hero, Verdict } from "./components/Top";
 import PriceChart from "./components/PriceChart";
@@ -52,6 +52,26 @@ function Dashboard({ session, onSignOut }: { session: Session; onSignOut: () => 
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [hideBanner, setHideBanner] = useState(false);
   const guest = session.mode !== "google";
+  const [synced, setSynced] = useState(guest);
+
+  // Signed-in users: pull saved preferences (last ticker, profile, watchlist, theme) once, then keep them synced.
+  useEffect(() => {
+    if (guest) return;
+    getPrefs().then(({ prefs }) => {
+      if (prefs) {
+        if (prefs.ticker) setTicker(prefs.ticker);
+        if (prefs.profile) setProfile(prefs.profile);
+        if (Array.isArray(prefs.watchlist) && prefs.watchlist.length) setWatch(prefs.watchlist);
+        if (typeof prefs.dark === "boolean") setDark(prefs.dark);
+      }
+    }).catch(() => { /* offline: fall back to local values */ }).finally(() => setSynced(true));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (guest || !synced) return;
+    const t = setTimeout(() => { putPrefs({ ticker, profile, watchlist: watch, dark }).catch(() => {}); }, 800);
+    return () => clearTimeout(t);
+  }, [guest, synced, ticker, profile, watch, dark]);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -86,7 +106,7 @@ function Dashboard({ session, onSignOut }: { session: Session; onSignOut: () => 
             </span>
           </div>
         )}
-        {view === "me" ? <MyActivity session={session} watchlist={watch} onSignUp={onSignOut} onSelect={(t: string) => { setTicker(t); setView("analyze"); }} />
+        {view === "me" ? <MyActivity session={session} watchlist={watch} profile={profile} onSignUp={onSignOut} onSelect={(t: string) => { setTicker(t); setView("analyze"); }} />
           : view === "admin" ? (session.mode === "google" && session.user.isAdmin ? <Admin /> : <GuestNotice onSignUp={onSignOut} />)
           : view === "compare" ? <Compare profile={profile} initial={watch} /> : (
           <>

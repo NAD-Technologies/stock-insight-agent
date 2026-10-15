@@ -42,6 +42,23 @@ async def analyze(ticker: str, profile: str = Query("balanced", pattern="^(balan
         raise HTTPException(502, f"Upstream data provider error ({type(e).__name__}); try again shortly")
 
 
+@router.get("/watchlist/summary")
+async def watchlist_summary(tickers: str):
+    """Light per-ticker snapshot (price, day change, 3-month sparkline) for the personal dashboard."""
+    syms = list(dict.fromkeys(_check(t) for t in tickers.split(",") if t.strip()))[:12]
+
+    async def one(sym: str):
+        try:
+            q, h = await asyncio.gather(Y.get_quote(sym), Y.get_price_history(sym, "3mo"))
+            closes = [round(float(x), 2) for x in h["close"].tail(60)] if h is not None and len(h) else []
+            return {"ticker": sym, "name": q.get("name"), "price": q.get("price"), "currency": q.get("currency"),
+                    "changePct": q.get("changePct"), "spark": closes}
+        except Exception:  # noqa: BLE001
+            return {"ticker": sym, "error": "unavailable"}
+
+    return {"results": await asyncio.gather(*(one(s) for s in syms))}
+
+
 @router.get("/search")
 async def search(q: str = Query(..., min_length=1, max_length=40)):
     try:

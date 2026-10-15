@@ -24,3 +24,7 @@ export const myActivity = () => get("/api/me/activity");
 export const adminOverview = () => get("/api/admin/overview");
 export const sendFeedback = (b: { message: string; rating?: number | null; name?: string; email?: string }) =>
   req("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b) });
+export const watchlistSummary = (tickers: string[]) => get(`/api/watchlist/summary?tickers=${tickers.join(",")}`);
+export const getPrefs = () => get("/api/me/prefs");
+export const putPrefs = (p: Record<string, any>) =>
+  req("/api/me/prefs", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(p) });

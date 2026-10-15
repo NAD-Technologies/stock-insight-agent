@@ -1,7 +1,24 @@
 import { useEffect, useState } from "react";
 import { adminOverview } from "../api";
 import { Card, Skeleton } from "./ui";
-import { when } from "./MyActivity";
+import { RegionBar, when } from "./MyActivity";
+
+function Bars({ values, labels, color = "var(--brand)" }: { values: number[]; labels: string[]; color?: string }) {
+  const max = Math.max(1, ...values);
+  return (
+    <div>
+      <div className="flex h-28 items-end gap-1">
+        {values.map((v, i) => (
+          <div key={i} className="flex flex-1 flex-col items-center justify-end" title={`${labels[i]}: ${v}`}>
+            <span className="num mb-0.5 text-[10px] text-mute">{v || ""}</span>
+            <div className="w-full rounded-t" style={{ height: `${Math.max(v ? 6 : 2, (v / max) * 84)}px`, background: color, opacity: v ? 1 : 0.25 }} />
+          </div>
+        ))}
+      </div>
+      <div className="mt-1 flex justify-between text-[10px] text-mute"><span>{labels[0]?.slice(5)}</span><span>{labels[labels.length - 1]?.slice(5)}</span></div>
+    </div>
+  );
+}
 
 export default function Admin() {
   const [d, setD] = useState<any>(null);
@@ -22,6 +39,42 @@ export default function Admin() {
           </div>
         ))}
       </div>
+      {d.metrics && (
+        <>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[["New users (7d)", d.metrics.newUsers7d], ["Returning users", d.metrics.returningRate == null ? "–" : `${d.metrics.returningRate}%`],
+              ["Tickers / user", d.metrics.avgTickersPerUser ?? "–"], ["Lookups / user", d.metrics.avgLookupsPerUser ?? "–"]].map(([k, v]: any) => (
+              <div key={k} className="rounded-xl border border-line bg-card p-4">
+                <div className="text-xs font-medium uppercase tracking-wide text-mute">{k}</div>
+                <div className="num mt-1 text-2xl font-bold">{v}</div>
+              </div>
+            ))}
+          </div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card title="Sign-ups (14 days)"><Bars values={d.metrics.signupsByDay} labels={d.metrics.days} /></Card>
+            <Card title="Daily active users (14 days)"><Bars values={d.metrics.activeByDay} labels={d.metrics.days} color="#60a5fa" /></Card>
+          </div>
+          <div className="grid gap-4 lg:grid-cols-3">
+            <Card title="Market mix (all lookups)"><RegionBar split={d.metrics.regionSplit} /></Card>
+            <Card title="Most active users">
+              <ul className="space-y-1.5 text-sm">
+                {d.metrics.topUsers.map((u: any) => <li key={u.email} className="flex justify-between"><span className="truncate">{u.name}</span><span className="num text-mute">{u.lookups}</span></li>)}
+                {d.metrics.topUsers.length === 0 && <li className="text-mute">No users yet.</li>}
+              </ul>
+            </Card>
+            <Card title="Feedback ratings">
+              <ul className="space-y-1 text-sm">
+                {[5, 4, 3, 2, 1].map((n) => {
+                  const v = d.metrics.ratingDist[String(n)] || 0, tot = Object.values(d.metrics.ratingDist as Record<string, number>).reduce((a, b) => a + b, 0) || 1;
+                  return <li key={n} className="flex items-center gap-2"><span className="w-6 text-mute">{n}★</span>
+                    <div className="h-2 flex-1 rounded-full bg-line"><div className="h-2 rounded-full" style={{ width: `${(v / tot) * 100}%`, background: "#f59e0b" }} /></div>
+                    <span className="num w-5 text-right text-mute">{v}</span></li>;
+                })}
+              </ul>
+            </Card>
+          </div>
+        </>
+      )}
       {s.topTickers.length > 0 && (
         <Card title="Most viewed tickers (all users)">
           <div className="flex flex-wrap gap-2">{s.topTickers.map((t: any) => <span key={t.ticker} className="rounded-full border border-line px-3 py-1 text-xs"><b>{t.ticker}</b> <span className="text-mute">{t.views}×</span></span>)}</div>

@@ -22,6 +22,35 @@ async def my_activity(authorization: str = Header("")):
     return db.user_activity(u["id"])
 
 
+class PrefsIn(BaseModel):
+    ticker: str | None = Field(None, max_length=16)
+    profile: str | None = Field(None, pattern="^(balanced|trader|investor)$")
+    watchlist: list[str] | None = Field(None, max_length=40)
+    dark: bool | None = None
+
+
+@router.get("/me/prefs")
+async def get_prefs(authorization: str = Header("")):
+    u = get_user(authorization)
+    if not u:
+        raise HTTPException(401, "Sign in to sync preferences")
+    return {"prefs": db.get_prefs(u["id"])}
+
+
+@router.put("/me/prefs")
+async def put_prefs(body: PrefsIn, authorization: str = Header("")):
+    u = get_user(authorization)
+    if not u:
+        raise HTTPException(401, "Sign in to sync preferences")
+    prefs = body.model_dump(exclude_none=True)
+    if "ticker" in prefs:
+        prefs["ticker"] = prefs["ticker"].strip().upper()
+    if "watchlist" in prefs:
+        prefs["watchlist"] = [t.strip().upper()[:16] for t in prefs["watchlist"] if t.strip()]
+    db.set_prefs(u["id"], prefs)
+    return {"ok": True}
+
+
 @router.post("/feedback")
 async def send_feedback(body: FeedbackIn, authorization: str = Header("")):
     u = get_user(authorization)
@@ -33,4 +62,4 @@ async def send_feedback(body: FeedbackIn, authorization: str = Header("")):
 
 @router.get("/admin/overview")
 async def admin_overview(_: dict = Depends(require_admin)):
-    return {"stats": db.stats(), "users": db.list_users(), "feedback": db.list_feedback()}
+    return {"stats": db.stats(), "metrics": db.metrics(), "users": db.list_users(), "feedback": db.list_feedback()}
