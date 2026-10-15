@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { analyze } from "./api";
+import { setCurrency } from "./lib/format";
 import { Header, Hero, Verdict } from "./components/Top";
 import PriceChart from "./components/PriceChart";
 import { PillarCards, TechSummary } from "./components/Pillars";
 import { Analyst, Fundamentals, Narrative, News, Risk, SmartMoney } from "./components/Panels";
 import Compare from "./components/Compare";
 import { Card, Section, Skeleton } from "./components/ui";
+import AuthGate from "./components/AuthGate";
+import { loadSession, saveSession, validate, Session } from "./auth";
 
 const ls = {
   get: (k: string, d: any) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
@@ -13,9 +16,30 @@ const ls = {
 };
 
 export default function App() {
+  const [session, setSession] = useState<Session | null>(loadSession);
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    if (session?.mode === "google") validate(session.token).then((ok) => { if (!ok) { saveSession(null); setSession(null); } setChecked(true); });
+    else setChecked(true);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const pick = useCallback((s: Session) => { saveSession(s); setSession(s); }, []);
+  const signOut = () => {
+    if (session?.mode === "google") try { (window as any).google?.accounts?.id?.disableAutoSelect(); } catch { /* ignore */ }
+    saveSession(null); setSession(null);
+  };
+
+  if (!checked) return null;
+  if (!session) return <AuthGate onSession={pick} />;
+  return <Dashboard key={session.mode === "google" ? session.user.id : "guest"} session={session} onSignOut={signOut} />;
+}
+
+function Dashboard({ session, onSignOut }: { session: Session; onSignOut: () => void }) {
+  const wlKey = session.mode === "google" ? `watchlist_v2:${session.user.id}` : "watchlist_v2";
   const [ticker, setTicker] = useState<string>(ls.get("ticker", "AAPL"));
   const [profile, setProfile] = useState<string>(ls.get("profile", "balanced"));
-  const [watch, setWatch] = useState<string[]>(ls.get("watchlist_v2", ["AAPL", "NVDA", "TSLA", "STX", "WDC"]));
+  const [watch, setWatch] = useState<string[]>(ls.get(wlKey, ["AAPL", "NVDA", "TSLA", "RELIANCE.NS", "TCS.NS", "INFY.NS"]));
   const [dark, setDark] = useState<boolean>(ls.get("dark", true));
   const [view, setView] = useState<"analyze" | "compare">("analyze");
   const [data, setData] = useState<any>(null);
@@ -26,7 +50,7 @@ export default function App() {
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
-    try { setData(await analyze(ticker, profile)); }
+    try { const d = await analyze(ticker, profile); setCurrency(d?.quote?.currency); setData(d); }
     catch (e: any) { setError(e.message || "Failed to load"); setData(null); }
     finally { setLoading(false); }
   }, [ticker, profile]);
@@ -35,13 +59,13 @@ export default function App() {
 
   const toggleWatch = () => {
     const next = watch.includes(ticker) ? watch.filter((t) => t !== ticker) : [...watch, ticker];
-    setWatch(next); ls.set("watchlist_v2", next);
+    setWatch(next); ls.set(wlKey, next);
   };
 
   return (
     <div className="min-h-screen pb-16">
       <Header onSelect={(t: string) => { setTicker(t); setView("analyze"); }} profile={profile} setProfile={setProfile} onRefresh={load}
-        asOf={data?.asOf} watchlist={watch} current={ticker} toggleWatch={toggleWatch} dark={dark} toggleDark={() => setDark(!dark)} view={view} setView={setView} />
+        asOf={data?.asOf} watchlist={watch} current={ticker} toggleWatch={toggleWatch} dark={dark} toggleDark={() => setDark(!dark)} view={view} setView={setView} session={session} onSignOut={onSignOut} />
       <main className="mx-auto max-w-7xl space-y-4 px-4 py-4">
         {view === "compare" ? <Compare profile={profile} initial={watch} /> : (
           <>
@@ -70,7 +94,7 @@ export default function App() {
         )}
       </main>
       <footer className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-card/95 px-4 py-2 text-center text-xs text-mute backdrop-blur">
-        {data?.disclaimer || "Educational analysis only — not financial advice. Data may be delayed."}
+        {data?.disclaimer || "Educational analysis only — not financial advice. Data may be delayed."} · © NAD Technologies
       </footer>
     </div>
   );

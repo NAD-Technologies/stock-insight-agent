@@ -1,9 +1,10 @@
+import { Logo } from "./Logo";
 import { useEffect, useRef, useState } from "react";
 import { search } from "../api";
 import { Badge, Card, Gauge } from "./ui";
 import { ago, big, fmtMetric, num, pct, ratioPct, ratingColor, usd } from "../lib/format";
 
-export function Header({ onSelect, profile, setProfile, onRefresh, asOf, watchlist, current, toggleWatch, dark, toggleDark, view, setView }: any) {
+export function Header({ onSelect, profile, setProfile, onRefresh, asOf, watchlist, current, toggleWatch, dark, toggleDark, view, setView, session, onSignOut }: any) {
   const [q, setQ] = useState("");
   const [res, setRes] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
@@ -19,7 +20,11 @@ export function Header({ onSelect, profile, setProfile, onRefresh, asOf, watchli
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-bg/90 backdrop-blur">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-4 py-3">
-        <span className="text-lg font-bold">📈 Stock Insight</span>
+        <div className="flex items-center gap-3">
+          <Logo size={34} />
+          <span className="hidden h-8 w-px bg-line sm:block" />
+          <span className="text-lg font-bold">Stock Insight</span>
+        </div>
         <div className="relative min-w-[220px] flex-1 sm:max-w-sm">
           <input value={q} onChange={(e) => { setQ(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)}
             onKeyDown={(e) => e.key === "Enter" && q.trim() && go(q.trim())}
@@ -47,6 +52,22 @@ export function Header({ onSelect, profile, setProfile, onRefresh, asOf, watchli
         <button onClick={onRefresh} className="rounded-lg border border-line px-3 py-2 text-sm">↻ Refresh</button>
         <button onClick={toggleDark} className="rounded-lg border border-line px-3 py-2 text-sm">{dark ? "☀" : "🌙"}</button>
         {asOf && <span className="text-xs text-mute">Updated {ago(asOf)}</span>}
+        {session && (
+          <div className="ml-auto flex items-center gap-2 text-sm">
+            {session.mode === "google" ? (
+              <>
+                {session.user.picture && <img src={session.user.picture} alt="" referrerPolicy="no-referrer" className="h-7 w-7 rounded-full" />}
+                <span className="hidden max-w-[140px] truncate sm:inline" title={session.user.email}>{session.user.name}</span>
+                <button onClick={onSignOut} className="rounded-lg border border-line px-3 py-2 text-sm">Sign out</button>
+              </>
+            ) : (
+              <>
+                <span className="text-xs text-mute">Guest</span>
+                <button onClick={onSignOut} className="rounded-lg border border-line px-3 py-2 text-sm">Sign up</button>
+              </>
+            )}
+          </div>
+        )}
       </div>
       <div className="mx-auto flex max-w-7xl items-center gap-2 overflow-x-auto px-4 pb-2 text-sm">
         <span className="text-xs text-mute">Watchlist</span>

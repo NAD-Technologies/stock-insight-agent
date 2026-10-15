@@ -1,6 +1,6 @@
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Badge, Card, Gauge } from "./ui";
-import { ago, big, na, num, pct, ratingColor, usd } from "../lib/format";
+import { ago, big, na, num, pct, ratingColor, sym, usd } from "../lib/format";
 
 const axis = { stroke: "var(--mute)", fontSize: 11 };
 const tip = { contentStyle: { background: "var(--card)", border: "1px solid var(--line)", borderRadius: 8, fontSize: 12 } };
@@ -177,7 +177,7 @@ export function SmartMoney({ s }: { s: any }) {
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {kv("Institutional %", na(ins.institutionPct) ? "N/A" : num(ins.institutionPct, 1) + "%")}
         {kv("Inst. change", na(ins.institutionalChangePct) ? "N/A" : pct(ins.institutionalChangePct, 1))}
-        {kv("Insider net (6m)", na(ins.netValue) ? "N/A" : "$" + big(ins.netValue))}
+        {kv("Insider net (6m)", na(ins.netValue) ? "N/A" : sym() + big(ins.netValue))}
         {kv("Buys / Sells", `${ins.buys ?? 0} / ${ins.sells ?? 0}`)}
         {kv("Short % float", na(sh.pctFloat) ? "N/A" : num(sh.pctFloat) + "%")}
         {kv("Days to cover", num(sh.daysToCover, 1))}
@@ -190,7 +190,7 @@ export function SmartMoney({ s }: { s: any }) {
           {(ins.transactions || []).slice(0, 8).map((t: any, i: number) => (
             <tr key={i} className="border-t border-line">
               <td className="py-1 text-mute">{t.date}</td><td>{t.insider}</td><td className="text-mute">{t.position}</td>
-              <td style={{ color: ratingColor(t.type) }}>{t.type}</td><td className="num text-right">{big(t.shares)}</td><td className="num text-right">{na(t.value) ? "" : "$" + big(t.value)}</td>
+              <td style={{ color: ratingColor(t.type) }}>{t.type}</td><td className="num text-right">{big(t.shares)}</td><td className="num text-right">{na(t.value) ? "" : sym() + big(t.value)}</td>
             </tr>
           ))}
         </tbody>

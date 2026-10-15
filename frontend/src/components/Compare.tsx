@@ -19,7 +19,7 @@ export default function Compare({ profile, initial }: { profile: string; initial
   };
 
   const metric: [string, (r: any) => string][] = [
-    ["Price", (r) => usd(r.price)], ["Day change", (r) => pct(r.changePct)], ["Market cap", (r) => big(r.marketCap)],
+    ["Price", (r) => usd(r.price, 2, r.currency)], ["Day change", (r) => pct(r.changePct)], ["Market cap", (r) => big(r.marketCap, r.currency)],
     ["P/E", (r) => num(r.metrics?.pe)], ["Forward P/E", (r) => num(r.metrics?.forwardPe)],
     ["Revenue growth", (r) => ratioPct(r.metrics?.revenueGrowth)], ["Operating margin", (r) => ratioPct(r.metrics?.operatingMargin)],
     ["ROE", (r) => ratioPct(r.metrics?.roe)], ["Analyst upside", (r) => pct(r.upsidePct, 1)],

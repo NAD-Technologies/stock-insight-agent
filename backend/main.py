@@ -11,13 +11,15 @@ from fastapi.staticfiles import StaticFiles
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 
+from api.auth import router as auth_router  # noqa: E402
 from api.routes import router  # noqa: E402
 
-app = FastAPI(title="Stock Insight Agent", version="1.0.0")
+app = FastAPI(title="Stock Insight by NAD Technologies", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=os.getenv("CORS_ORIGINS", "http://localhost:5173").split(","),
-                   allow_methods=["GET"], allow_headers=["*"])
+                   allow_methods=["GET", "POST"], allow_headers=["*"])
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 app.include_router(router)
+app.include_router(auth_router)
 
 # Hosted mode: when the built UI is copied to backend/static (see root Dockerfile), serve it from the same origin.
 _static = Path(__file__).parent / "static"

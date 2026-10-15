@@ -199,7 +199,7 @@ def condensed(p: dict) -> dict:
     """Compact per-ticker summary for the compare view."""
     q, r = p["quote"], p["recommendation"]
     m = {x["key"]: x["value"] for x in p["fundamental"]["metrics"]}
-    return {"ticker": p["ticker"], "company": p["company"], "price": q["price"], "changePct": q["changePct"], "marketCap": q["marketCap"],
+    return {"ticker": p["ticker"], "company": p["company"], "price": q["price"], "currency": q.get("currency"), "changePct": q["changePct"], "marketCap": q["marketCap"],
             "rating": r["rating"], "compositeScore": r["compositeScore"], "confidence": r["confidence"]["level"],
             "pillarScores": r["pillarScores"], "horizons": r["horizons"],
             "metrics": {k: m.get(k) for k in ("pe", "forwardPe", "revenueGrowth", "operatingMargin", "roe", "debtToEquity", "fcfYield")},
