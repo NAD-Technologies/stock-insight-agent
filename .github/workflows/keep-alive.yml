@@ -1,0 +1,33 @@
+name: Keep site awake
+
+# Render's free tier sleeps after ~15 min without traffic. This pings the app's health endpoint on a schedule.
+# Setup: repo Settings > Secrets and variables > Actions > Variables > New repository variable
+#   SITE_URL = https://<your-app>.onrender.com   (no trailing slash)
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # every 10 minutes (GitHub may delay runs a few minutes under load)
+  workflow_dispatch: {}       # lets you run it manually from the Actions tab
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping /api/health
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          if [ -z "$SITE_URL" ]; then
+            echo "SITE_URL variable is not set (repo Settings > Secrets and variables > Actions > Variables)"; exit 1
+          fi
+          # A sleeping Render service can take ~60s to wake, so allow retries and a long timeout.
+          for i in 1 2 3; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 75 "${SITE_URL%/}/api/health" || true)
+            echo "attempt $i: HTTP $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 15
+          done
+          echo "Site did not return 200"; exit 1

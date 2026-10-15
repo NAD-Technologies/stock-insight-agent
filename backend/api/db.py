@@ -88,7 +88,7 @@ def upsert_user(u: dict) -> None:
     now = int(time.time())
     _run("""INSERT INTO users (id, email, name, picture, first_seen, last_seen, login_count) VALUES (?,?,?,?,?,?,1)
             ON CONFLICT(id) DO UPDATE SET email=excluded.email, name=excluded.name, picture=excluded.picture,
-            last_seen=excluded.last_seen, login_count=login_count+1""",
+            last_seen=excluded.last_seen, login_count=users.login_count+1""",
          (u["id"], u.get("email"), u.get("name"), u.get("picture"), now, now))
     _mark_active(u["id"])
 
@@ -121,7 +121,7 @@ def set_prefs(uid: str, prefs: dict) -> None:
 def record_view(uid: str, ticker: str) -> None:
     now = int(time.time())
     _run("""INSERT INTO ticker_views (user_id, ticker, count, last_viewed) VALUES (?,?,1,?)
-            ON CONFLICT(user_id, ticker) DO UPDATE SET count=count+1, last_viewed=excluded.last_viewed""",
+            ON CONFLICT(user_id, ticker) DO UPDATE SET count=ticker_views.count+1, last_viewed=excluded.last_viewed""",
          (uid, ticker, now))
     _mark_active(uid)
 
