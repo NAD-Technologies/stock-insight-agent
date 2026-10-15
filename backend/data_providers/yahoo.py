@@ -49,6 +49,16 @@ def _safe(fn, default=None):
         return default
 
 
+# Yahoo's `info` call is often blocked/empty from cloud hosts, which drops the currency. Fall back to the exchange suffix.
+_SUFFIX_CCY = {".NS": "INR", ".BO": "INR", ".T": "JPY", ".HK": "HKD", ".TO": "CAD", ".V": "CAD", ".AX": "AUD", ".SI": "SGD",
+               ".SS": "CNY", ".SZ": "CNY", ".L": "GBP", ".DE": "EUR", ".PA": "EUR", ".MI": "EUR", ".AS": "EUR", ".MC": "EUR"}
+
+
+def infer_currency(ticker: str) -> str:
+    t = ticker.upper()
+    return next((c for suf, c in _SUFFIX_CCY.items() if t.endswith(suf)), "USD")
+
+
 # ------------------------------------------------------------------ quote
 @ttl_cache(60)
 async def get_quote(ticker: str) -> dict:
@@ -68,7 +78,7 @@ async def get_quote(ticker: str) -> dict:
         return {
             "ticker": ticker.upper(),
             "name": info.get("longName") or info.get("shortName") or ticker.upper(),
-            "currency": info.get("currency"), "exchange": info.get("fullExchangeName") or info.get("exchange"),
+            "currency": info.get("currency") or fi.get("currency") or infer_currency(ticker), "exchange": info.get("fullExchangeName") or info.get("exchange"),
             "price": price, "previousClose": prev, "change": change,
             "changePct": (change / prev * 100) if change is not None and prev else None,
             "volume": vol, "avgVolume": avg, "volumeVsAvg": (vol / avg) if vol and avg else None,

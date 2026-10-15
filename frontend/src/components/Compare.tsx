@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { compare } from "../api";
 import { Badge, Card, ScoreBar, Skeleton } from "./ui";
-import { big, num, pct, ratioPct, ratingColor, usd } from "../lib/format";
+import { big, num, pct, ratioPct, ratingColor, usd, inferCurrency } from "../lib/format";
 
 export default function Compare({ profile, initial }: { profile: string; initial: string[] }) {
   const [input, setInput] = useState(initial.slice(0, 4).join(", "));
@@ -19,7 +19,7 @@ export default function Compare({ profile, initial }: { profile: string; initial
   };
 
   const metric: [string, (r: any) => string][] = [
-    ["Price", (r) => usd(r.price, 2, r.currency)], ["Day change", (r) => pct(r.changePct)], ["Market cap", (r) => big(r.marketCap, r.currency)],
+    ["Price", (r) => usd(r.price, 2, r.currency || inferCurrency(r.ticker))], ["Day change", (r) => pct(r.changePct)], ["Market cap", (r) => big(r.marketCap, r.currency || inferCurrency(r.ticker))],
     ["P/E", (r) => num(r.metrics?.pe)], ["Forward P/E", (r) => num(r.metrics?.forwardPe)],
     ["Revenue growth", (r) => ratioPct(r.metrics?.revenueGrowth)], ["Operating margin", (r) => ratioPct(r.metrics?.operatingMargin)],
     ["ROE", (r) => ratioPct(r.metrics?.roe)], ["Analyst upside", (r) => pct(r.upsidePct, 1)],

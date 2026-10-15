@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { compare, myActivity, watchlistSummary } from "../api";
 import { Badge, Card, Skeleton } from "./ui";
-import { pct, usd } from "../lib/format";
+import { inferCurrency, pct, usd } from "../lib/format";
 
 export const when = (ts: number) => new Date(ts * 1000).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 
@@ -64,7 +64,7 @@ function Watchlist({ tickers, profile, onSelect }: { tickers: string[]; profile:
               <div className="text-xs font-medium uppercase tracking-wide text-mute">{label}</div>
               <div className="mt-1 flex items-baseline justify-between"><span className="text-lg font-bold">{r.ticker}</span>
                 <span className="num text-lg font-bold" style={{ color: r.changePct >= 0 ? "#22c55e" : "#f43f5e" }}>{pct(r.changePct)}</span></div>
-              <div className="num text-sm text-mute">{usd(r.price, 2, r.currency)}</div>
+              <div className="num text-sm text-mute">{usd(r.price, 2, r.currency || inferCurrency(r.ticker))}</div>
             </button>
           ))}
         </div>
@@ -81,7 +81,7 @@ function Watchlist({ tickers, profile, onSelect }: { tickers: string[]; profile:
               {r.error ? null : (
                 <>
                   <div className="mt-2 flex items-baseline justify-between">
-                    <span className="num text-xl font-bold">{usd(r.price, 2, r.currency)}</span>
+                    <span className="num text-xl font-bold">{usd(r.price, 2, r.currency || inferCurrency(r.ticker))}</span>
                     <span className="num text-sm font-semibold" style={{ color: (r.changePct ?? 0) >= 0 ? "#22c55e" : "#f43f5e" }}>{pct(r.changePct)}</span>
                   </div>
                   <Spark data={r.spark} up={(r.changePct ?? 0) >= 0} />

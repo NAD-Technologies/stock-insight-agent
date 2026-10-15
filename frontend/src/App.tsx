@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { analyze, getPrefs, putPrefs } from "./api";
-import { setCurrency } from "./lib/format";
+import { inferCurrency, setCurrency } from "./lib/format";
 import { Header, Hero, Verdict } from "./components/Top";
 import PriceChart from "./components/PriceChart";
 import { PillarCards, TechSummary } from "./components/Pillars";
@@ -80,7 +80,7 @@ function Dashboard({ session, onSignOut }: { session: Session; onSignOut: () => 
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
-    try { const d = await analyze(ticker, profile); setCurrency(d?.quote?.currency); setData(d); }
+    try { const d = await analyze(ticker, profile); setCurrency(d?.quote?.currency || inferCurrency(d?.ticker || ticker)); setData(d); }
     catch (e: any) { setError(e.message || "Failed to load"); setData(null); }
     finally { setLoading(false); }
   }, [ticker, profile]);

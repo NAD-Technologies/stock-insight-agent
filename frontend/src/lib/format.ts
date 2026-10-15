@@ -1,7 +1,10 @@
 export const na = (v: any) => v === null || v === undefined || (typeof v === "number" && !isFinite(v));
 export const num = (v: any, d = 2) => (na(v) ? "N/A" : Number(v).toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d }));
 // Display currency follows the stock being viewed (set from quote.currency); Indian stocks show in INR.
-const SYMBOLS: Record<string, string> = { USD: "$", INR: "₹", EUR: "€", GBP: "£", JPY: "¥" };
+const SYMBOLS: Record<string, string> = { USD: "$", INR: "₹", EUR: "€", GBP: "£", JPY: "¥", CNY: "¥", HKD: "HK$", CAD: "C$", AUD: "A$", SGD: "S$" };
+const SUFFIX_CCY: [string, string][] = [[".NS", "INR"], [".BO", "INR"], [".T", "JPY"], [".HK", "HKD"], [".TO", "CAD"], [".AX", "AUD"], [".L", "GBP"], [".DE", "EUR"], [".PA", "EUR"]];
+/** Safety net when the API sends no currency: guess from the exchange suffix (RELIANCE.NS -> INR). */
+export const inferCurrency = (ticker?: string) => SUFFIX_CCY.find(([s]) => (ticker || "").toUpperCase().endsWith(s))?.[1] ?? "USD";
 let currentCurrency = "USD";
 export const setCurrency = (c?: string | null) => { currentCurrency = (c || "USD").toUpperCase(); };
 export const sym = (c?: string | null) => { const k = (c || currentCurrency).toUpperCase(); return SYMBOLS[k] ?? k + " "; };

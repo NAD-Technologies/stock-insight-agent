@@ -50,11 +50,11 @@ export function Fundamentals({ f, price }: { f: any; price: number }) {
           ) : <p className="text-sm text-mute">Fair value N/A (insufficient cash-flow data).</p>}
         </div>
         <div>
-          <div className="mb-1 text-xs text-mute">Quarterly revenue ($B) &amp; EPS</div>
+          <div className="mb-1 text-xs text-mute">Quarterly revenue ({sym()}B) &amp; EPS</div>
           <GrowthBars data={growth} />
         </div>
         <div>
-          <div className="mb-1 text-xs text-mute">Annual revenue ($B) &amp; EPS</div>
+          <div className="mb-1 text-xs text-mute">Annual revenue ({sym()}B) &amp; EPS</div>
           <GrowthBars data={annual} />
         </div>
         <div className="lg:col-span-2">
@@ -74,7 +74,7 @@ function GrowthBars({ data }: { data: any[] }) {
     <ResponsiveContainer width="100%" height={200}>
       <BarChart data={data}><CartesianGrid stroke="var(--line)" vertical={false} /><XAxis dataKey="period" {...axis} />
         <YAxis yAxisId="l" {...axis} /><YAxis yAxisId="r" orientation="right" {...axis} /><Tooltip {...tip} /><Legend />
-        <Bar yAxisId="l" dataKey="revenue" name="Revenue $B" fill="#3b82f6" /><Bar yAxisId="r" dataKey="eps" name="EPS" fill="#16a34a" /></BarChart>
+        <Bar yAxisId="l" dataKey="revenue" name={`Revenue ${sym()}B`} fill="#3b82f6" /><Bar yAxisId="r" dataKey="eps" name="EPS" fill="#16a34a" /></BarChart>
     </ResponsiveContainer>
   );
 }
