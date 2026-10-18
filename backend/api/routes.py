@@ -6,6 +6,7 @@ from fastapi import APIRouter, Header, HTTPException, Query
 from agent import orchestrator as O
 from api import db
 from api.auth import get_user
+from sector_pulse.overlay import overlay as sector_overlay
 from data_providers import yahoo as Y
 
 router = APIRouter(prefix="/api")
@@ -35,6 +36,8 @@ async def analyze(ticker: str, profile: str = Query("balanced", pattern="^(balan
                 db.record_view(user["id"], t)
             except Exception:  # noqa: BLE001  (never fail an analysis because of tracking)
                 pass
+        result = {**result, "sectorOverlay": sector_overlay(t, (result.get("quote") or {}).get("sector"),
+                                                              (result.get("recommendation") or {}).get("rating"))}
         return result
     except Y.TickerNotFound:
         raise HTTPException(404, f"No market data found for {t}")

@@ -11,6 +11,9 @@ import AuthGate from "./components/AuthGate";
 import MyActivity, { GuestNotice } from "./components/MyActivity";
 import Admin from "./components/Admin";
 import FeedbackModal from "./components/FeedbackModal";
+import MarketPulse from "./components/MarketPulse";
+import SectorDetail from "./components/SectorDetail";
+import SectorOverlay from "./components/SectorOverlay";
 import { loadSession, saveSession, validate, Session } from "./auth";
 
 const ls = {
@@ -48,7 +51,8 @@ function Dashboard({ session, onSignOut }: { session: Session; onSignOut: () => 
   const [profile, setProfile] = useState<string>(ls.get("profile", "balanced"));
   const [watch, setWatch] = useState<string[]>(ls.get(wlKey, ["AAPL", "NVDA", "TSLA", "RELIANCE.NS", "TCS.NS", "INFY.NS"]));
   const [dark, setDark] = useState<boolean>(ls.get("dark", true));
-  const [view, setView] = useState<"analyze" | "compare" | "me" | "admin">("analyze");
+  const [view, setView] = useState<"analyze" | "compare" | "me" | "admin" | "pulse" | "sector">("analyze");
+  const [sectorId, setSectorId] = useState("");
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [hideBanner, setHideBanner] = useState(false);
   const guest = session.mode !== "google";
@@ -106,7 +110,9 @@ function Dashboard({ session, onSignOut }: { session: Session; onSignOut: () => 
             </span>
           </div>
         )}
-        {view === "me" ? <MyActivity session={session} watchlist={watch} profile={profile} onSignUp={onSignOut} onSelect={(t: string) => { setTicker(t); setView("analyze"); }} />
+        {view === "pulse" ? <MarketPulse isAdmin={session.mode === "google" && !!session.user.isAdmin} onOpen={(id: string) => { setSectorId(id); setView("sector"); }} />
+          : view === "sector" ? <SectorDetail id={sectorId} onBack={() => setView("pulse")} onTicker={(t: string) => { setTicker(t); setView("analyze"); }} />
+          : view === "me" ? <MyActivity session={session} watchlist={watch} profile={profile} onSignUp={onSignOut} onSelect={(t: string) => { setTicker(t); setView("analyze"); }} />
           : view === "admin" ? (session.mode === "google" && session.user.isAdmin ? <Admin /> : <GuestNotice onSignUp={onSignOut} />)
           : view === "compare" ? <Compare profile={profile} initial={watch} /> : (
           <>
@@ -118,6 +124,7 @@ function Dashboard({ session, onSignOut }: { session: Session; onSignOut: () => 
             {!loading && data && (
               <>
                 <Section title="Overview"><Hero d={data} /></Section>
+                {data.sectorOverlay && <SectorOverlay o={data.sectorOverlay} onOpen={(id: string) => { setSectorId(id); setView("sector"); }} />}
                 <Section title="Verdict"><Verdict d={data} /></Section>
                 <Section title="Chart"><PriceChart chart={data.chart} /></Section>
                 <Section title="Pillars"><PillarCards d={data} /></Section>

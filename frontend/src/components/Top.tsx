@@ -49,6 +49,7 @@ export function Header({ onSelect, profile, setProfile, onRefresh, asOf, watchli
         <button onClick={() => setView(view === "compare" ? "analyze" : "compare")} className="rounded-lg border border-line px-3 py-2 text-sm">
           {view === "compare" ? "Analyze" : "Compare"}
         </button>
+        <button onClick={() => setView(view === "pulse" || view === "sector" ? "analyze" : "pulse")} className={`rounded-lg border px-3 py-2 text-sm ${view === "pulse" || view === "sector" ? "border-fg" : "border-line"}`}>Market Pulse</button>
         <button onClick={() => setView(view === "me" ? "analyze" : "me")} className={`rounded-lg border px-3 py-2 text-sm ${view === "me" ? "border-fg" : "border-line"}`}>My view</button>
         {session?.mode === "google" && session.user.isAdmin && (
           <button onClick={() => setView(view === "admin" ? "analyze" : "admin")} className={`rounded-lg border px-3 py-2 text-sm ${view === "admin" ? "border-fg" : "border-line"}`}>Admin</button>

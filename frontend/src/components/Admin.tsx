@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { adminOverview } from "../api";
+import { adminOverview, adminPipeline } from "../api";
 import { Card, Skeleton } from "./ui";
 import { RegionBar, when } from "./MyActivity";
 
@@ -24,6 +24,8 @@ export default function Admin() {
   const [d, setD] = useState<any>(null);
   const [err, setErr] = useState("");
   const [tab, setTab] = useState<"users" | "feedback">("users");
+  const [pipe, setPipe] = useState<any>(null);
+  useEffect(() => { adminPipeline().then(setPipe).catch(() => setPipe(null)); }, []);
   useEffect(() => { adminOverview().then(setD).catch((e) => setErr(e.message)); }, []);
 
   if (err) return <Card title="Admin"><p className="text-sm text-bear">{err}</p></Card>;
@@ -74,6 +76,26 @@ export default function Admin() {
             </Card>
           </div>
         </>
+      )}
+      {pipe && (
+        <Card title="Sector Pulse pipeline" className="overflow-x-auto">
+          <table className="w-full min-w-[560px] text-sm">
+            <thead><tr className="text-left text-xs uppercase text-mute"><th className="pb-2">Run</th><th>Status</th><th>Finished</th><th>Themes</th><th>Headlines</th><th>Stocks refreshed</th><th>Seconds</th></tr></thead>
+            <tbody>
+              {pipe.runs.map((r: any) => (
+                <tr key={r.id} className="border-t border-line" title={(r.stats?.errors || []).join("\n")}>
+                  <td className="py-1.5">#{r.id}</td>
+                  <td style={{ color: r.status === "ok" ? "#22c55e" : r.status === "degraded" ? "#f59e0b" : "#f43f5e" }}>{r.status}</td>
+                  <td className="text-xs text-mute">{r.finished ? when(r.finished) : "running…"}</td>
+                  <td className="num">{r.stats?.themes ?? "–"}</td><td className="num">{r.stats?.news?.headlines ?? "–"}</td>
+                  <td className="num">{r.stats?.stockScores?.refreshed ?? "–"}</td><td className="num">{r.stats?.seconds ?? "–"}</td>
+                </tr>
+              ))}
+              {pipe.runs.length === 0 && <tr><td colSpan={7} className="py-4 text-center text-mute">The pipeline has not run yet.</td></tr>}
+            </tbody>
+          </table>
+          <p className="mt-2 text-xs text-mute">Predictions graded: {pipe.accuracy.overall.n} · waiting: {pipe.accuracy.pending}. Hover a run to see its errors.</p>
+        </Card>
       )}
       {s.topTickers.length > 0 && (
         <Card title="Most viewed tickers (all users)">

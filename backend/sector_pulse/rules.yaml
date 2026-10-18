@@ -1,0 +1,193 @@
+# Sector Pulse scoring rules. Every number here is configurable; no scoring constants live in code.
+# Scores are ABSOLUTE (50 = neutral vs the market), not cross-sector z-scores, so "Up" means
+# "expected to beat SPY", not merely "stronger than the average sector".
+
+benchmark: SPY
+
+horizons:
+  1W: {days: 5,  eval_days: 7,  flat_band: 0.010, scale: 0.03}   # scale: excess return that maps to ~+/-76 points
+  1M: {days: 21, eval_days: 30, flat_band: 0.020, scale: 0.06}
+  3M: {days: 63, eval_days: 91, flat_band: 0.040, scale: 0.12}
+
+# Factor weights per horizon. Factors with no data in a run are dropped and the rest are renormalised
+# (confidence falls and the missing factors are listed). earnings and social arrive in later phases.
+weights:
+  1W: {momentum: 0.25, earnings: 0.05, news: 0.30, events: 0.20, social: 0.10, flows: 0.10}
+  1M: {momentum: 0.25, earnings: 0.20, news: 0.20, events: 0.15, social: 0.10, flows: 0.10}
+  3M: {momentum: 0.25, earnings: 0.30, news: 0.10, events: 0.10, social: 0.05, flows: 0.20}
+
+momentum:
+  parts: {excess_return: 0.50, breadth: 0.30, trend: 0.20}
+
+direction: {up_at: 60, down_at: 40}   # score >= up_at -> Up, <= down_at -> Down, otherwise Flat
+probability_slope: 12                 # P(outperform SPY) = logistic((score - 50) / slope). Uncalibrated until accuracy data accrues.
+
+news:
+  lookback_days: 7
+  half_life_days: 5
+  shrink: 6.0          # added to the weight sum so a single headline cannot swing the score
+  per_theme_tickers: 3 # constituents (besides the ETF) whose headlines feed the theme
+  per_ticker_items: 8
+  min_items_for_confidence: 6
+
+flows:
+  fast_days: 10
+  slow_days: 60
+
+confidence:
+  high_coverage: 0.8        # share of configured weight that had data
+  high_spread: 12           # max std-dev of factor scores for "High"
+  med_spread: 20
+
+picks:
+  leaders: 5
+  laggards: 5
+  min_dollar_volume: 5000000   # average daily dollar volume; thinner names are excluded
+  weights: {composite: 0.50, news: 0.20, relative_strength: 0.15, sensitivity: 0.15}
+  rs_scale: 0.06
+  stale_hours: 24             # Module A composite older than this is refreshed (within the per-run budget)
+
+# ---------------------------------------------------------------- events
+event_severity_weight: {High: 1.0, Med: 0.6, Low: 0.3}
+
+event_types:
+  conflict_escalation:
+    half_life_days: 30
+    keywords: [war, invasion, missile, airstrike, troops, attack on, military strike, escalat, ceasefire collapse, hostilities, conflict]
+  sanctions:
+    half_life_days: 30
+    keywords: [sanction, embargo, export ban, export controls, blacklist, asset freeze]
+  oil_supply_shock:
+    half_life_days: 14
+    keywords: [opec, oil supply, crude surge, oil prices jump, pipeline attack, refinery outage, oil embargo, strait of hormuz, red sea shipping]
+  rate_hike:
+    half_life_days: 21
+    keywords: [rate hike, raises rates, hawkish, higher for longer, rate increase]
+  rate_cut:
+    half_life_days: 21
+    keywords: [rate cut, cuts rates, dovish, easing cycle, lowers rates]
+  inflation_hot:
+    half_life_days: 14
+    keywords: [inflation surges, hotter than expected cpi, cpi jumps, inflation accelerates, inflation rises]
+  tariffs:
+    half_life_days: 21
+    keywords: [tariff, trade war, import duties, trade restrictions]
+  regulation_crackdown:
+    half_life_days: 21
+    keywords: [antitrust, crackdown, regulatory probe, new regulation, fda rejects, ban on]
+  recession_fear:
+    half_life_days: 14
+    keywords: [recession, economic slowdown, jobs report weak, yield curve inverts, gdp contracts]
+  ceasefire_deescalation:
+    half_life_days: 14
+    keywords: [ceasefire, peace deal, de-escalation, truce, peace talks]
+
+# event type -> theme id -> expected direction/strength in [-1, 1]. The classifier flags an event; this matrix says who it helps or hurts.
+impact_matrix:
+  conflict_escalation:
+    defense_aerospace: 0.8
+    oil_gas: 0.6
+    energy: 0.5
+    nuclear_uranium: 0.3
+    space_satellite: 0.3
+    gold_mining: 0.4
+    cybersecurity: 0.3
+    airlines_travel: -0.7
+    consumer_discretionary: -0.3
+    technology: -0.2
+    blue_chip: -0.15
+  sanctions:
+    energy: 0.4
+    oil_gas: 0.4
+    defense_aerospace: 0.3
+    materials: 0.2
+    nuclear_uranium: 0.3
+    ai_semiconductors: -0.3
+    technology: -0.15
+  oil_supply_shock:
+    oil_gas: 0.8
+    energy: 0.7
+    airlines_travel: -0.8
+    transport_logistics: -0.4
+    consumer_discretionary: -0.3
+    clean_energy: 0.3
+    industrials: -0.15
+  rate_hike:
+    financials: 0.2
+    real_estate: -0.6
+    homebuilders: -0.7
+    utilities: -0.3
+    technology: -0.4
+    cloud_software: -0.5
+    clean_energy: -0.5
+    biotech: -0.4
+    consumer_discretionary: -0.3
+  rate_cut:
+    real_estate: 0.6
+    homebuilders: 0.7
+    utilities: 0.3
+    technology: 0.4
+    cloud_software: 0.5
+    clean_energy: 0.5
+    biotech: 0.4
+    consumer_discretionary: 0.3
+    gold_mining: 0.3
+  inflation_hot:
+    energy: 0.3
+    materials: 0.2
+    gold_mining: 0.3
+    consumer_staples: 0.1
+    technology: -0.3
+    real_estate: -0.4
+    homebuilders: -0.4
+    consumer_discretionary: -0.3
+  tariffs:
+    industrials: -0.3
+    ai_semiconductors: -0.4
+    consumer_discretionary: -0.4
+    materials: 0.1
+    transport_logistics: -0.3
+    technology: -0.2
+    blue_chip: -0.15
+  regulation_crackdown:
+    technology: -0.3
+    communication_services: -0.3
+    biotech: -0.3
+    financials: -0.2
+    ai_semiconductors: -0.2
+  recession_fear:
+    consumer_staples: 0.4
+    utilities: 0.4
+    health_care: 0.3
+    gold_mining: 0.4
+    blue_chip: 0.1
+    consumer_discretionary: -0.6
+    industrials: -0.5
+    financials: -0.4
+    airlines_travel: -0.6
+    homebuilders: -0.4
+    technology: -0.2
+  ceasefire_deescalation:
+    airlines_travel: 0.5
+    consumer_discretionary: 0.2
+    technology: 0.15
+    defense_aerospace: -0.4
+    oil_gas: -0.4
+    energy: -0.3
+    gold_mining: -0.3
+
+# Headline sources used to detect events (GDELT is free and keyless; Yahoo news for the tickers below).
+event_sources:
+  macro_tickers: [SPY, USO, ITA, XLE, TLT, GLD]
+  gdelt:
+    enabled: true
+    timespan: 24h
+    max_records: 40
+    sleep_seconds: 6.0    # GDELT asks for at most one request every 5 seconds
+
+# How many headlines/outlets it takes before a detected event is rated High / Med.
+event_detection:
+  high_sources: 3
+  high_headlines: 5
+  med_headlines: 2
+  max_headlines_kept: 3

@@ -13,6 +13,7 @@ logging.basicConfig(level=logging.INFO)
 
 from api.auth import router as auth_router  # noqa: E402
 from api.routes import router  # noqa: E402
+from api.sectors import router as sectors_router  # noqa: E402
 from api.user import router as user_router  # noqa: E402
 
 app = FastAPI(title="Stock Insight by NAD Technologies", version="1.0.0")
@@ -22,6 +23,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1024)
 app.include_router(router)
 app.include_router(auth_router)
 app.include_router(user_router)
+app.include_router(sectors_router)
 
 # Hosted mode: when the built UI is copied to backend/static (see root Dockerfile), serve it from the same origin.
 _static = Path(__file__).parent / "static"

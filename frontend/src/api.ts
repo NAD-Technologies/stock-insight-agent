@@ -28,3 +28,7 @@ export const watchlistSummary = (tickers: string[]) => get(`/api/watchlist/summa
 export const getPrefs = () => get("/api/me/prefs");
 export const putPrefs = (p: Record<string, any>) =>
   req("/api/me/prefs", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(p) });
+export const sectors = () => get("/api/sectors");
+export const sectorDetail = (id: string) => get(`/api/sectors/${encodeURIComponent(id)}`);
+export const sectorAccuracy = () => get("/api/sectors/accuracy");
+export const adminPipeline = () => get("/api/admin/pipeline");

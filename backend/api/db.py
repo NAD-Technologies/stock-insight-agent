@@ -32,6 +32,21 @@ _TABLES = [
     "CREATE TABLE IF NOT EXISTS activity (user_id TEXT, day TEXT, PRIMARY KEY (user_id, day))",
     "CREATE TABLE IF NOT EXISTS feedback (id {pk}, user_id TEXT, name TEXT, email TEXT, "
     "rating INTEGER, message TEXT, created_at BIGINT)",
+    # ---- Sector Pulse (written by the scheduled pipeline, read by the API)
+    "CREATE TABLE IF NOT EXISTS sp_runs (id {pk}, started BIGINT, finished BIGINT, status TEXT, stats TEXT)",
+    "CREATE TABLE IF NOT EXISTS sp_snapshots (id {pk}, run_id BIGINT, theme TEXT, as_of BIGINT, payload TEXT)",
+    "CREATE INDEX IF NOT EXISTS sp_snapshots_theme_asof ON sp_snapshots (theme, as_of)",
+    "CREATE TABLE IF NOT EXISTS sp_events (id TEXT PRIMARY KEY, type TEXT, severity TEXT, first_seen BIGINT, "
+    "last_seen BIGINT, n_headlines INTEGER, n_sources INTEGER, headlines TEXT)",
+    "CREATE TABLE IF NOT EXISTS sp_news (hash TEXT PRIMARY KEY, title TEXT, url TEXT, source TEXT, published TEXT, "
+    "sentiment TEXT, impact TEXT, catalyst TEXT, reason TEXT, method TEXT, ticker TEXT, fetched BIGINT)",
+    "CREATE TABLE IF NOT EXISTS sp_stock_scores (ticker TEXT PRIMARY KEY, as_of BIGINT, composite DOUBLE PRECISION, "
+    "rating TEXT, news_score DOUBLE PRECISION, name TEXT)",
+    "CREATE TABLE IF NOT EXISTS sp_predictions (id {pk}, theme TEXT, horizon TEXT, made_at BIGINT, day TEXT, label TEXT, "
+    "score DOUBLE PRECISION, prob_up DOUBLE PRECISION, confidence TEXT, baseline_label TEXT, bench TEXT, "
+    "entry_px DOUBLE PRECISION, spy_entry DOUBLE PRECISION, evaluate_at BIGINT, exit_px DOUBLE PRECISION, "
+    "spy_exit DOUBLE PRECISION, excess DOUBLE PRECISION, outcome TEXT, hit INTEGER, baseline_hit INTEGER, "
+    "UNIQUE (theme, horizon, day))",
 ]
 
 

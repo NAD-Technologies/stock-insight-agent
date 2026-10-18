@@ -1,0 +1,51 @@
+name: Sector Pulse pipeline
+
+# Scores every sector/theme, picks leaders and laggards, logs predictions and grades past ones. Results are written to Postgres
+# and the web app only reads them. Runs outside the web service because Render's free instance sleeps and has little memory.
+#
+# Setup (repo Settings > Secrets and variables > Actions):
+#   Secret  DATABASE_URL     the same Neon connection string the web app uses (required)
+#   Secret  NVIDIA_API_KEY   optional: lets the LLM classify news instead of the keyword fallback
+#   Secret  FINNHUB_API_KEY  optional extra news source
+
+on:
+  schedule:
+    - cron: "15 */4 * * *"   # every 4 hours (GitHub may delay runs a few minutes)
+  workflow_dispatch:
+    inputs:
+      budget:
+        description: "Max full stock analyses this run (use ~200 for the first run to fill every ranking)"
+        default: "40"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sector-pulse
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: pip install -r requirements.txt
+      - name: Run pipeline and grade past predictions
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+          LLM_PROVIDER: ${{ secrets.NVIDIA_API_KEY != '' && 'nvidia' || '' }}
+          SECTOR_ANALYZE_BUDGET: ${{ github.event.inputs.budget || '40' }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then echo "DATABASE_URL secret is not set"; exit 1; fi
+          python -m sector_pulse all

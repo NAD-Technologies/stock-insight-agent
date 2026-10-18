@@ -1,0 +1,50 @@
+# Sector Pulse taxonomy. Editable without code changes.
+#   id        stable key used in the database and URLs
+#   etf       benchmark ETF (omit for a theme with no clean ETF: an equal-weight basket of constituents is used)
+#   members   constituent tickers (a ticker may appear in several themes); keep to ~8 liquid US names
+# `group` is "gics" for the 11 GICS sectors and "theme" for custom themes.
+
+themes:
+  # ---- GICS sectors (11)
+  - {id: technology,             name: Technology,              group: gics, etf: XLK,  members: [AAPL, MSFT, NVDA, AVGO, ORCL, CRM, ADBE, CSCO]}
+  - {id: health_care,            name: Health Care,             group: gics, etf: XLV,  members: [LLY, UNH, JNJ, ABBV, MRK, TMO, ABT, PFE]}
+  - {id: financials,             name: Financials,              group: gics, etf: XLF,  members: [JPM, BAC, WFC, GS, MS, BLK, SCHW, AXP]}
+  - {id: energy,                 name: Energy,                  group: gics, etf: XLE,  members: [XOM, CVX, COP, EOG, SLB, OXY, PSX, MPC]}
+  - {id: industrials,            name: Industrials,             group: gics, etf: XLI,  members: [GE, CAT, UNP, HON, DE, UPS, ETN, WM]}
+  - {id: consumer_discretionary, name: Consumer Discretionary,  group: gics, etf: XLY,  members: [AMZN, TSLA, HD, MCD, NKE, SBUX, LOW, BKNG]}
+  - {id: consumer_staples,       name: Consumer Staples,        group: gics, etf: XLP,  members: [PG, KO, PEP, COST, WMT, PM, MDLZ, CL]}
+  - {id: utilities,              name: Utilities,               group: gics, etf: XLU,  members: [NEE, SO, DUK, CEG, AEP, SRE, D, EXC]}
+  - {id: materials,              name: Materials,               group: gics, etf: XLB,  members: [LIN, SHW, FCX, NEM, APD, ECL, NUE, DOW]}
+  - {id: real_estate,            name: Real Estate,             group: gics, etf: XLRE, members: [PLD, AMT, EQIX, WELL, SPG, PSA, O, DLR]}
+  - {id: communication_services, name: Communication Services,  group: gics, etf: XLC,  members: [GOOGL, META, NFLX, DIS, CMCSA, T, VZ, TMUS]}
+
+  # ---- Custom themes
+  - {id: blue_chip,         name: Blue Chip / Mega-cap,   group: theme, etf: DIA,  members: [AAPL, MSFT, JNJ, KO, PG, JPM, WMT, MCD]}
+  - {id: oil_gas,           name: Oil & Gas,              group: theme, etf: XOP,  members: [XOM, CVX, COP, OXY, EOG, DVN, FANG, HAL]}
+  - {id: nuclear_uranium,   name: Nuclear & Uranium,      group: theme, etf: URA,  members: [CCJ, UEC, NXE, LEU, SMR, OKLO, CEG, UUUU]}
+  - {id: space_satellite,   name: Space & Satellite,      group: theme, etf: UFO,  members: [RKLB, ASTS, PL, IRDM, SATS, LUNR, RDW, GSAT]}
+  - {id: defense_aerospace, name: Defense & Aerospace,    group: theme, etf: ITA,  members: [LMT, RTX, NOC, GD, BA, LHX, HII, TDG]}
+  - {id: edtech_education,  name: Education / EdTech,     group: theme,            members: [CHGG, COUR, DUOL, LRN, STRA, LOPE, ATGE, PRDO]}
+  - {id: ai_semiconductors, name: AI & Semiconductors,    group: theme, etf: SMH,  members: [NVDA, AMD, AVGO, TSM, MU, INTC, QCOM, ASML]}
+  - {id: clean_energy,      name: Clean Energy,           group: theme, etf: ICLN, members: [ENPH, FSLR, NEE, RUN, PLUG, SEDG, BE, CSIQ]}
+  - {id: biotech,           name: Biotech,                group: theme, etf: XBI,  members: [VRTX, REGN, MRNA, GILD, AMGN, BIIB, ALNY, BMRN]}
+  - {id: cybersecurity,     name: Cybersecurity,          group: theme, etf: CIBR, members: [CRWD, PANW, FTNT, ZS, NET, OKTA, S, CHKP]}
+  - {id: airlines_travel,   name: Airlines & Travel,      group: theme, etf: JETS, members: [DAL, UAL, AAL, LUV, ALK, CCL, RCL, MAR]}
+  - {id: gold_mining,       name: Gold & Mining,          group: theme, etf: GDX,  members: [NEM, AEM, WPM, FNV, KGC, GOLD, AU, GFI]}
+  - {id: cloud_software,    name: Cloud & Software,       group: theme, etf: IGV,  members: [MSFT, CRM, NOW, ADBE, INTU, SNOW, DDOG, WDAY]}
+  - {id: homebuilders,      name: Homebuilders,           group: theme, etf: ITB,  members: [DHI, LEN, NVR, PHM, TOL, KBH, TMHC, MTH]}
+  - {id: transport_logistics, name: Transport & Logistics, group: theme, etf: IYT, members: [UNP, UPS, FDX, CSX, NSC, ODFL, DAL, JBHT]}
+
+# Yahoo's "sector" field -> GICS theme id (used to show a sector overlay for tickers that are not listed above)
+yahoo_sector_map:
+  Technology: technology
+  Healthcare: health_care
+  Financial Services: financials
+  Energy: energy
+  Industrials: industrials
+  Consumer Cyclical: consumer_discretionary
+  Consumer Defensive: consumer_staples
+  Utilities: utilities
+  Basic Materials: materials
+  Real Estate: real_estate
+  Communication Services: communication_services
