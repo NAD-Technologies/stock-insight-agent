@@ -163,3 +163,27 @@ def accuracy() -> dict:
     for t in sorted({r["theme"] for r in rows}):
         by_t[t] = summarise([r for r in rows if r["theme"] == t])
     return {"overall": summarise(rows), "byHorizon": by_h, "byTheme": by_t, "pending": pending}
+
+
+# ------------------------------------------------------------------ agent messages
+def save_message(run_id: int, seq: int, ts_ms: int, sender: str, receiver: str, topic: str, summary: str,
+                 items: Optional[int], ms: Optional[int], status: str, sample: Optional[str]) -> None:
+    _run("""INSERT INTO sp_messages (run_id, seq, ts, sender, receiver, topic, summary, items, ms, status, sample)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?)""", (run_id, seq, ts_ms, sender, receiver, topic, summary, items, ms, status, sample))
+
+
+def messages(run_id: int) -> list[dict]:
+    rows = _run("SELECT seq, ts, sender, receiver, topic, summary, items, ms, status, sample FROM sp_messages WHERE run_id=? ORDER BY seq",
+                (run_id,), many=True)
+    for r in rows:
+        r["sample"] = _loads(r.get("sample"), r.get("sample"))
+    return rows
+
+
+def get_run(run_id: Optional[int] = None) -> Optional[dict]:
+    rows = (_run("SELECT * FROM sp_runs WHERE id=?", (run_id,), many=True) if run_id
+            else _run("SELECT * FROM sp_runs ORDER BY id DESC LIMIT 1", many=True))
+    if not rows:
+        return None
+    rows[0]["stats"] = _loads(rows[0].get("stats"), {})
+    return rows[0]

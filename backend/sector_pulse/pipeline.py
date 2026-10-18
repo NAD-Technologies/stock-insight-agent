@@ -14,6 +14,7 @@ import logging
 import math
 import os
 import time
+import traceback
 from contextlib import contextmanager
 from typing import Optional
 
@@ -26,6 +27,7 @@ from analytics import scoring as AS
 from data_providers import yahoo as Y
 
 from . import events as EV
+from .agents import Bus, ms_since
 from . import scoring as S
 from . import store
 
@@ -113,7 +115,9 @@ async def collect_news(themes: list[dict], rules: dict) -> dict:
         except Exception as e:  # noqa: BLE001
             log.warning("news failed for %s: %s", sym, e)
             return sym, []
+    t_fetch = time.perf_counter()
     fetched = await _map_limited(fetch, tickers, 5)
+    ms_fetch = ms_since(t_fetch)
 
     rows = []
     for sym, items in fetched:
@@ -124,13 +128,16 @@ async def collect_news(themes: list[dict], rules: dict) -> dict:
     new = [r for r in rows if r["hash"] not in known]
     model = AS.load_config()["llm"]["model"]
     methods: dict[str, int] = {}
+    t_cls = time.perf_counter()
     for i in range(0, len(new), 25):
         chunk = new[i:i + 25]
         classified, method = await N.classify(chunk, model)
         methods[method] = methods.get(method, 0) + len(chunk)
         store.save_news([{**c, "hash": r["hash"], "ticker": r["ticker"], "method": method, "title": r["title"],
                           "url": r.get("url"), "source": r.get("source"), "time": r.get("time")} for c, r in zip(classified, chunk)])
-    return {"tickers": len(tickers), "headlines": len(rows), "newClassified": len(new), "methods": methods}
+    return {"tickers": len(tickers), "headlines": len(rows), "newClassified": len(new), "methods": methods,
+            "msFetch": ms_fetch, "msClassify": ms_since(t_cls),
+            "sample": [{"ticker": r["ticker"], "title": r["title"][:110]} for r in new[:2]]}
 
 
 # ------------------------------------------------------------------ events
@@ -185,16 +192,23 @@ async def refresh_stock_scores(tickers: list[str], budget: int, stale_hours: flo
 
     async def one(t):
         nonlocal ok, failed
-        try:
-            p = await O.analyze(t, "balanced", use_llm=False)
-            rec = p["recommendation"]
-            store.save_stock_score(t, rec.get("compositeScore"), rec.get("rating"), (p.get("sentiment") or {}).get("newsScore"), p.get("company"))
-            ok += 1
-        except Exception as e:  # noqa: BLE001
-            failed += 1
-            log.warning("stock analysis failed for %s: %s", t, e)
+        last = None
+        for attempt in (1, 2):  # Yahoo throttles bursts: one patient retry rescues most transient failures
+            try:
+                p = await O.analyze(t, "balanced", use_llm=False)
+                rec = p["recommendation"]
+                store.save_stock_score(t, rec.get("compositeScore"), rec.get("rating"), (p.get("sentiment") or {}).get("newsScore"), p.get("company"))
+                ok += 1
+                return
+            except Exception as e:  # noqa: BLE001
+                last = e
+                if attempt == 1:
+                    await asyncio.sleep(6)
+        failed += 1
+        where = traceback.extract_tb(last.__traceback__)[-1] if last and last.__traceback__ else None
+        log.warning("stock analysis failed for %s: %r at %s", t, last, f"{where.filename.split('/')[-1].split(chr(92))[-1]}:{where.lineno}" if where else "?")
     with _no_llm_news():
-        await _map_limited(one, todo, 3)
+        await _map_limited(one, todo, 2)
     return {"missing": len(missing), "stale": len(stale), "refreshed": ok, "failed": failed, "budget": budget}
 
 
@@ -325,33 +339,65 @@ async def run(budget: Optional[int] = None) -> dict:
     themes = themes_cfg["themes"]
     budget = budget if budget is not None else int(os.getenv("SECTOR_ANALYZE_BUDGET", "40"))
     run_id = store.start_run()
+    bus = Bus(run_id)
     started = time.time()
     stats: dict = {"errors": []}
     now = dt.datetime.now(dt.timezone.utc)
     try:
         symbols = {rules["benchmark"]} | {t["etf"] for t in themes if t.get("etf")} | {m for t in themes for m in t["members"]}
+        n_etf = len({t["etf"] for t in themes if t.get("etf")})
+        bus.send("scheduler", "price_agent", "task.fetch_prices",
+                 f"Fetch 1y daily history for {len(symbols)} symbols (SPY + {n_etf} ETFs + constituents)", items=len(symbols),
+                 sample={"benchmark": rules["benchmark"], "themes": len(themes), "period": "1y"})
+        t0 = time.perf_counter()
         hist = await load_histories(symbols)
         stats["prices"] = {"requested": len(symbols), "loaded": len(hist)}
+        bus.send("price_agent", "quant_agent", "prices.ready", f"{len(hist)} of {len(symbols)} symbols loaded", items=len(hist), ms=ms_since(t0),
+                 status="ok" if len(hist) >= 0.95 * len(symbols) else "warn",
+                 sample={"missing": sorted(symbols - set(hist))[:8]})
         if rules["benchmark"] not in hist:
             stats["errors"].append("benchmark SPY history unavailable: relative-strength signals are skipped")
 
+        bus.send("scheduler", "news_agent", "task.fetch_news", "Collect recent headlines for each theme's ETF and leading constituents",
+                 sample={"lookbackDays": rules["news"]["lookback_days"], "perTheme": rules["news"]["per_theme_tickers"]})
         try:
             stats["news"] = await collect_news(themes, rules)
+            n = stats["news"]
+            bus.send("news_agent", "sentiment_agent", "headlines.new", f"{n['newClassified']} unseen headlines of {n['headlines']} fetched ({n['tickers']} tickers)",
+                     items=n["newClassified"], ms=n["msFetch"], sample=n["sample"])
+            bus.send("sentiment_agent", "quant_agent", "news.classified", f"Classified via {', '.join(f'{k} x{v}' for k, v in n['methods'].items()) or 'cache only'}",
+                     items=n["newClassified"], ms=n["msClassify"], sample={"methods": n["methods"], "cachedSkipped": n["headlines"] - n["newClassified"]})
         except Exception as e:  # noqa: BLE001
             log.exception("news stage failed")
             stats["errors"].append(f"news: {e}")
+            bus.send("news_agent", "scheduler", "error", f"News stage failed: {e}", status="error")
+        bus.send("scheduler", "event_agent", "task.scan_events", "Scan macro headlines and GDELT for war, sanctions, oil, rate and tariff events",
+                 sample={"types": list(rules["event_types"])[:5], "sources": ["GDELT", "Yahoo macro news"]})
+        t0 = time.perf_counter()
         try:
             stats["events"] = await collect_events(rules)
+            ev = stats["events"]
+            bus.send("event_agent", "quant_agent", "events.active",
+                     (", ".join(f"{t} ({sv})" for t, sv in ev["detected"]) or "No market-moving events detected") + f" from {ev['headlines']} headlines",
+                     items=len(ev["detected"]), ms=ms_since(t0), status="ok" if ev["gdelt"] else "warn", sample=ev["detected"])
         except Exception as e:  # noqa: BLE001
             log.exception("event stage failed")
             stats["errors"].append(f"events: {e}")
+            bus.send("event_agent", "scheduler", "error", f"Event stage failed: {e}", status="error")
 
         all_members = list(dict.fromkeys(m for t in themes for m in t["members"] if m in hist))
+        bus.send("scheduler", "stock_agent", "task.refresh_scores", f"Refresh full analysis for up to {budget} missing or stale stocks",
+                 items=budget, sample={"universe": len(all_members), "staleHours": rules["picks"]["stale_hours"]})
+        t0 = time.perf_counter()
         try:
             stats["stockScores"] = await refresh_stock_scores(all_members, budget, rules["picks"]["stale_hours"])
+            sc = stats["stockScores"]
+            bus.send("stock_agent", "picker_agent", "stock.scores", f"{sc['refreshed']} analysed, {sc['failed']} failed ({sc['missing']} had no score yet)",
+                     items=sc["refreshed"], ms=ms_since(t0), status="ok" if not sc["failed"] else "warn", sample=sc)
         except Exception as e:  # noqa: BLE001
             log.exception("stock score stage failed")
             stats["errors"].append(f"stock scores: {e}")
+            bus.send("stock_agent", "scheduler", "error", f"Stock analysis stage failed: {e}", status="error")
 
         events = store.recent_events()
         scores = store.stock_scores(all_members)
@@ -362,9 +408,20 @@ async def run(budget: Optional[int] = None) -> dict:
             try:
                 tickers = ([th["etf"]] if th.get("etf") else []) + th["members"][: rules["news"]["per_theme_tickers"]]
                 items = store.news_for(tickers, since)
+                t0 = time.perf_counter()
                 snap = score_theme(th, hist, rules, items, events, now)
+                h1 = snap["horizons"]["1M"]
+                bus.send("quant_agent", "picker_agent", "theme.scored", f"{th['name']}: 1M score {h1['score']} {h1['direction']} ({h1['confidence']} confidence)",
+                         ms=ms_since(t0), sample={"theme": th["id"], "score": {k: v["score"] for k, v in snap["horizons"].items()},
+                                                   "newsItems": snap["metrics"]["newsItems"], "events": [e["type"] for e in snap["events"]]})
+                t0 = time.perf_counter()
                 bench, _ = bench_series(th, hist)
                 snap["picks"] = build_picks(th, snap, hist, bench, scores, rules)
+                lead, lag = snap["picks"]["leaders"], snap["picks"]["laggards"]
+                bus.send("picker_agent", "publisher_agent", "snapshot.ready",
+                         f"{th['name']}: leaders {', '.join(p['ticker'] for p in lead[:3]) or '-'}; laggards {', '.join(p['ticker'] for p in lag[:3]) or '-'}",
+                         items=len(lead) + len(lag), ms=ms_since(t0),
+                         sample={"leaders": [(p["ticker"], p["rank"]) for p in lead[:3]], "laggards": [(p["ticker"], p["rank"]) for p in lag[:3]]})
                 snaps.append(snap)
             except Exception as e:  # noqa: BLE001
                 log.exception("scoring failed for %s", th["id"])
@@ -377,13 +434,20 @@ async def run(budget: Optional[int] = None) -> dict:
         for s in snaps:
             store.save_snapshot(run_id, s["theme"], as_of, s)
         stats["themes"] = len(snaps)
+        bus.send("publisher_agent", "scheduler", "snapshots.saved", f"Saved {len(snaps)} theme snapshots for the web app to read", items=len(snaps),
+                 sample={"asOf": as_of, "topRanked": [s["theme"] for s in ranked[:3]]})
         stats["predictionsLogged"] = log_predictions(snaps, themes, hist, rules, as_of)
+        bus.send("quant_agent", "publisher_agent", "predictions.logged", f"Logged {stats['predictionsLogged']} predictions for later grading",
+                 items=stats["predictionsLogged"], sample={"perDay": "one per theme and horizon"})
         status = "ok" if snaps and not stats["errors"] else "degraded" if snaps else "failed"
     except Exception as e:  # noqa: BLE001
         log.exception("pipeline failed")
         stats["errors"].append(str(e))
         status = "failed"
+        bus.send("scheduler", "scheduler", "error", f"Run failed: {e}", status="error")
     stats["seconds"] = round(time.time() - started, 1)
+    bus.send("scheduler", "scheduler", "run.finished", f"Run {status} in {stats['seconds']}s with {len(stats['errors'])} error(s)",
+             status="ok" if status == "ok" else "warn" if status == "degraded" else "error", sample={"errors": stats["errors"][:3]})
     store.finish_run(run_id, status, stats)
     log.info("run %s %s: %s", run_id, status, stats)
     return {"runId": run_id, "status": status, **stats}
@@ -418,13 +482,19 @@ def _px_on(series: pd.Series, when: dt.datetime) -> Optional[float]:
     return float(s.iloc[-1]) if len(s) else None
 
 
-async def evaluate(now: Optional[int] = None) -> dict:
+async def evaluate(now: Optional[int] = None, run_id: Optional[int] = None) -> dict:
     """Grade predictions whose horizon has elapsed: excess return of the theme benchmark over SPY between the two dates."""
     themes_cfg, rules = S.load_yaml("themes.yaml"), S.load_yaml("rules.yaml")
     by_id = {t["id"]: t for t in themes_cfg["themes"]}
     now = now or int(time.time())
     due = store.due_predictions(now)
+    bus = Bus(run_id) if run_id else None
+    if bus:
+        bus.seq = len(store.messages(run_id))  # continue the run's message sequence
+        bus.send("scheduler", "evaluator_agent", "task.grade_predictions", f"Grade predictions whose horizon has passed ({len(due)} due)", items=len(due))
     if not due:
+        if bus:
+            bus.send("evaluator_agent", "publisher_agent", "outcomes.graded", "Nothing due yet; predictions are still waiting for their horizon", items=0)
         return {"due": 0, "graded": 0}
     needed = {rules["benchmark"]} | {s for p in due if p["theme"] in by_id
                                      for s in ([by_id[p["theme"]].get("etf")] if by_id[p["theme"]].get("etf") else by_id[p["theme"]]["members"]) if s}
@@ -449,4 +519,7 @@ async def evaluate(now: Optional[int] = None) -> dict:
         outcome = S.outcome_label(excess, rules["horizons"][p["horizon"]]["flat_band"])
         store.save_outcome(p["id"], b1, s1, excess, outcome, int(outcome == p["label"]), int(outcome == p["baseline_label"]))
         graded += 1
+    if bus:
+        bus.send("evaluator_agent", "publisher_agent", "outcomes.graded", f"{graded} graded, {skipped} waiting for price data", items=graded,
+                 status="ok" if not skipped else "warn", sample={"due": len(due), "graded": graded, "skipped": skipped})
     return {"due": len(due), "graded": graded, "skipped": skipped}

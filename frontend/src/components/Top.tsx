@@ -54,6 +54,9 @@ export function Header({ onSelect, profile, setProfile, onRefresh, asOf, watchli
         {session?.mode === "google" && session.user.isAdmin && (
           <button onClick={() => setView(view === "admin" ? "analyze" : "admin")} className={`rounded-lg border px-3 py-2 text-sm ${view === "admin" ? "border-fg" : "border-line"}`}>Admin</button>
         )}
+        {session?.mode === "google" && session.user.isAdmin && (
+          <button onClick={() => setView(view === "agents" ? "analyze" : "agents")} className={`rounded-lg border px-3 py-2 text-sm ${view === "agents" ? "border-fg" : "border-line"}`}>Agents</button>
+        )}
         <button onClick={onFeedback} className="rounded-lg border border-line px-3 py-2 text-sm">Feedback</button>
         <button onClick={onRefresh} className="rounded-lg border border-line px-3 py-2 text-sm">↻ Refresh</button>
         <button onClick={toggleDark} className="rounded-lg border border-line px-3 py-2 text-sm">{dark ? "☀" : "🌙"}</button>

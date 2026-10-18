@@ -12,6 +12,8 @@ html:not(.dark) .bg-fg { background: var(--brand); }
 html:not(.dark) .bg-fg.text-bg { color: #fff; }
 html:not(.dark) input:focus, html:not(.dark) select:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(15, 118, 110, .15); }
 html:not(.dark) .border-fg { border-color: var(--brand); color: var(--brand); }
+@keyframes flow { to { stroke-dashoffset: -24; } }
+.flow { stroke-dasharray: 7 5; animation: flow .7s linear infinite; }
 .num { font-variant-numeric: tabular-nums; }
 @keyframes pulse2 { 50% { opacity: .45; } }
 .skeleton { background: var(--line); border-radius: 8px; animation: pulse2 1.4s ease-in-out infinite; }

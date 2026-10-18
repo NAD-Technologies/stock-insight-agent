@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import datetime as dt
 import logging
+import time
 from urllib.parse import urlparse
 
 import httpx
@@ -67,8 +68,14 @@ async def fetch_gdelt(rules: dict) -> list[dict]:
     if not cfg.get("enabled"):
         return []
     out: list[dict] = []
+    deadline = time.monotonic() + cfg.get("max_seconds", 150)
+    failures = 0  # consecutive event types that returned nothing usable
     async with httpx.AsyncClient(timeout=20, headers={"User-Agent": "stock-insight-sector-pulse/1.0"}) as c:
         for typ, tcfg in rules["event_types"].items():
+            if time.monotonic() > deadline or failures >= cfg.get("stop_after_failures", 3):
+                log.warning("GDELT stage stopped early (%s)", "time cap" if time.monotonic() > deadline else "repeated failures")
+                break
+            got = False
             params = {"query": _gdelt_query(tcfg["keywords"]), "mode": "artlist", "format": "json",
                       "maxrecords": cfg["max_records"], "timespan": cfg["timespan"], "sort": "datedesc"}
             for attempt in (1, 2, 3):
@@ -81,10 +88,12 @@ async def fetch_gdelt(rules: dict) -> list[dict]:
                     await asyncio.sleep(cfg["sleep_seconds"] * 2 * attempt)
                     continue
                 if r.status_code == 200 and r.text.strip().startswith("{"):
+                    got = True
                     for a in r.json().get("articles", []):
                         out.append({"title": a.get("title"), "url": a.get("url"), "source": a.get("domain"), "time": a.get("seendate")})
                 else:
                     log.warning("GDELT %s -> HTTP %s", typ, r.status_code)
                 break
+            failures = 0 if got else failures + 1
             await asyncio.sleep(cfg["sleep_seconds"])
     return out

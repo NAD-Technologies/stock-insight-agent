@@ -42,6 +42,9 @@ _TABLES = [
     "sentiment TEXT, impact TEXT, catalyst TEXT, reason TEXT, method TEXT, ticker TEXT, fetched BIGINT)",
     "CREATE TABLE IF NOT EXISTS sp_stock_scores (ticker TEXT PRIMARY KEY, as_of BIGINT, composite DOUBLE PRECISION, "
     "rating TEXT, news_score DOUBLE PRECISION, name TEXT)",
+    "CREATE TABLE IF NOT EXISTS sp_messages (id {pk}, run_id BIGINT, seq INTEGER, ts BIGINT, sender TEXT, receiver TEXT, "
+    "topic TEXT, summary TEXT, items INTEGER, ms INTEGER, status TEXT, sample TEXT)",
+    "CREATE INDEX IF NOT EXISTS sp_messages_run ON sp_messages (run_id, seq)",
     "CREATE TABLE IF NOT EXISTS sp_predictions (id {pk}, theme TEXT, horizon TEXT, made_at BIGINT, day TEXT, label TEXT, "
     "score DOUBLE PRECISION, prob_up DOUBLE PRECISION, confidence TEXT, baseline_label TEXT, bench TEXT, "
     "entry_px DOUBLE PRECISION, spy_entry DOUBLE PRECISION, evaluate_at BIGINT, exit_px DOUBLE PRECISION, "

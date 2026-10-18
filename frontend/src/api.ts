@@ -32,3 +32,4 @@ export const sectors = () => get("/api/sectors");
 export const sectorDetail = (id: string) => get(`/api/sectors/${encodeURIComponent(id)}`);
 export const sectorAccuracy = () => get("/api/sectors/accuracy");
 export const adminPipeline = () => get("/api/admin/pipeline");
+export const adminAgents = (runId?: number) => get(`/api/admin/agents${runId ? `?run_id=${runId}` : ""}`);

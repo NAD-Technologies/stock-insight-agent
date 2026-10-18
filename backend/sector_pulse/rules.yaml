@@ -183,6 +183,8 @@ event_sources:
     enabled: true
     timespan: 24h
     max_records: 40
+    max_seconds: 150        # hard cap for the whole GDELT stage so rate limits cannot stall a run
+    stop_after_failures: 3  # give up after this many consecutive failed event types
     sleep_seconds: 6.0    # GDELT asks for at most one request every 5 seconds
 
 # How many headlines/outlets it takes before a detected event is rated High / Med.

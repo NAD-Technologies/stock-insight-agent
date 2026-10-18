@@ -22,7 +22,7 @@ async def main() -> int:
     if args.command in ("run", "all"):
         out["run"] = await pipeline.run(args.budget)
     if args.command in ("evaluate", "all"):
-        out["evaluate"] = await pipeline.evaluate()
+        out["evaluate"] = await pipeline.evaluate(run_id=out.get("run", {}).get("runId"))
     print(json.dumps(out, indent=2, default=str))
     return 1 if out.get("run", {}).get("status") == "failed" else 0
 

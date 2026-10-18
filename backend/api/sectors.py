@@ -8,6 +8,7 @@ from api.auth import require_admin
 from sector_pulse import overlay as OV
 from sector_pulse import scoring as S
 from sector_pulse import store
+from sector_pulse.agents import AGENTS
 
 router = APIRouter(prefix="/api")
 STALE_AFTER = 12 * 3600
@@ -81,3 +82,37 @@ async def sector_detail(theme: str):
 @router.get("/admin/pipeline")
 async def admin_pipeline(_: dict = Depends(require_admin)):
     return {"runs": store.last_runs(10), "accuracy": store.accuracy()}
+
+
+@router.get("/admin/agents")
+async def admin_agents(run_id: int | None = None, _: dict = Depends(require_admin)):
+    """Agent graph for one pipeline run: the agents, who messaged whom (aggregated), and the ordered message log."""
+    runs = store.last_runs(15)
+    run = store.get_run(run_id) if run_id else (runs[0] if runs else None)
+    msgs = store.messages(run["id"]) if run else []
+    t0 = msgs[0]["ts"] if msgs else 0
+    for m in msgs:
+        m["t"] = m["ts"] - t0  # ms since the run's first message, for the replay timeline
+    edges: dict[tuple, dict] = {}
+    stats = {a["id"]: {"sent": 0, "received": 0, "ms": 0, "errors": 0, "warnings": 0} for a in AGENTS}
+    for m in msgs:
+        e = edges.setdefault((m["sender"], m["receiver"]), {"from": m["sender"], "to": m["receiver"], "count": 0, "items": 0, "ms": 0,
+                                                            "errors": 0, "topics": []})
+        e["count"] += 1
+        e["items"] += m["items"] or 0
+        e["ms"] += m["ms"] or 0
+        e["errors"] += m["status"] == "error"
+        if m["topic"] not in e["topics"]:
+            e["topics"].append(m["topic"])
+        if m["sender"] in stats:
+            stats[m["sender"]]["sent"] += 1
+            stats[m["sender"]]["ms"] += m["ms"] or 0
+            stats[m["sender"]]["errors"] += m["status"] == "error"
+            stats[m["sender"]]["warnings"] += m["status"] == "warn"
+        if m["receiver"] in stats and m["receiver"] != m["sender"]:
+            stats[m["receiver"]]["received"] += 1
+    return {"runs": [{"id": r["id"], "status": r["status"], "started": r["started"], "finished": r["finished"],
+                      "seconds": (r["stats"] or {}).get("seconds")} for r in runs],
+            "run": {"id": run["id"], "status": run["status"], "started": run["started"], "finished": run["finished"],
+                    "seconds": (run["stats"] or {}).get("seconds"), "errors": (run["stats"] or {}).get("errors", [])} if run else None,
+            "agents": [{**a, "stats": stats[a["id"]]} for a in AGENTS], "edges": list(edges.values()), "messages": msgs}
